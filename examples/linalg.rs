@@ -1,4 +1,4 @@
-use kaffe::{Matrix, MatrixLinAlg};
+use sukker::{Matrix, MatrixLinAlg};
 
 fn main() {
     let a = Matrix::randomize((3, 1024));
