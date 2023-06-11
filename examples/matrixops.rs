@@ -4,7 +4,10 @@ fn main() {
     let a = Matrix::randomize((2, 3));
     let b = Matrix::randomize((2, 3));
 
-    let c = a.add(&b);
+    let mut c = a.add(&b);
+    c.mul_self(&b);
 
-    c.print();
+    let d = c.add_val(42f32);
+
+    d.print();
 }
