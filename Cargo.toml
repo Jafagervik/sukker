@@ -9,7 +9,7 @@ readme = "README.md"
 description = "Matrices in rust"
 repository = "https://github.com/Jafagervik/sukker.git"
 
-keywords = ["ai","matrix", "data science",  "numpy"]
+keywords = ["ai","matrix",  "numpy"]
 categories = ["mathematics", "science"]
 
 [dependencies]
