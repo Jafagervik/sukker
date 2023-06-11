@@ -89,7 +89,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let matrix = Matrix::eye(2);
     /// matrix.print();
@@ -129,7 +129,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let matrix = Matrix::new(vec![1.0,2.0,3.0,4.0], (2,2));
     ///
@@ -154,7 +154,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let matrix = Matrix::default();
     ///
@@ -177,7 +177,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let matrix = Matrix::init(4f32, (1,2));
     ///
@@ -194,7 +194,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let matrix = Matrix::eye(2);
     ///
@@ -214,7 +214,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let matrix = Matrix::identity(2);
     ///
@@ -230,7 +230,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let s = vec![1f32, 2f32, 3f32, 4f32];
     /// let matrix = Matrix::from_slice(&s, (4,1));
@@ -251,7 +251,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let matrix = Matrix::zeros((4,1));
     ///
@@ -268,7 +268,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let matrix = Matrix::ones((4,1));
     ///
@@ -285,7 +285,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let matrix1 = Matrix::default();
     /// let matrix2 = Matrix::zeros_like(&matrix1);
@@ -302,7 +302,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let matrix1 = Matrix::default();
     /// let matrix2 = Matrix::ones_like(&matrix1);
@@ -320,7 +320,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let matrix1 = Matrix::default();
     /// let matrix2 = Matrix::random_like(&matrix1);
@@ -337,7 +337,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let matrix = Matrix::randomize_range(1f32, 2f32, (2,3));
     ///
@@ -361,7 +361,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let matrix = Matrix::randomize((2,3));
     ///
@@ -414,7 +414,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let mut matrix = Matrix::init(10.5, (2,3));
     /// matrix.reshape((3,2));
@@ -434,7 +434,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let matrix = Matrix::init(10.5, (2,3));
     ///
@@ -449,7 +449,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let matrix = Matrix::init(10.5, (2,3));
     ///
@@ -464,7 +464,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let matrix = Matrix::init(10.5, (2,3));
     ///
@@ -479,7 +479,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let matrix = Matrix::init(10.5, (2,3));
     ///
@@ -494,7 +494,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let matrix = Matrix::init(10.5, (4,4));
     /// let slice = matrix.get_vec_slice(1,1, 2,2);
@@ -518,7 +518,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let mut matrix = Matrix::init(10.5, (2,3));
     /// matrix.set(1,2, 11.5);
@@ -534,7 +534,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let matrix = Matrix::init(10.5, (2,2));
     /// let inv = matrix.inverse_at(1);
@@ -553,7 +553,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let matrix = Matrix::init(10.5, (2,3));
     ///
@@ -573,7 +573,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let mut matrix = Matrix::init(10.5, (2,3));
     /// matrix.data[2] = 1.0;
@@ -594,7 +594,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, Dimension};
+    /// use sukker::{Matrix, Dimension};
     ///
     /// let mut matrix = Matrix::init(1.0, (3,3));
     /// matrix.data[2] = 15.0;
@@ -637,7 +637,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, Dimension};
+    /// use sukker::{Matrix, Dimension};
     ///
     /// let mut matrix = Matrix::init(10.5, (3,3));
     /// matrix.data[1] = 1.0;
@@ -680,7 +680,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let matrix = Matrix::init(10f32, (2,2));
     ///
@@ -695,7 +695,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let matrix = Matrix::init(10f32, (2,2));
     ///
@@ -710,7 +710,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let matrix = Matrix::init(10f32, (2,2));
     ///
@@ -725,7 +725,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let matrix = Matrix::init(10f32, (2,2));
     ///
@@ -740,7 +740,7 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
+    /// use sukker::Matrix;
     ///
     /// let matrix = Matrix::new(vec![1.0, 4.0, 6.0, 5.0], (2,2));
     ///
@@ -778,8 +778,8 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
-    /// use kaffe::Dimension;
+    /// use sukker::Matrix;
+    /// use sukker::Dimension;
     ///
     /// let matrix = Matrix::init(10f32, (2,2));
     ///
@@ -803,8 +803,8 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::Matrix;
-    /// use kaffe::Dimension;
+    /// use sukker::Matrix;
+    /// use sukker::Dimension;
     ///
     /// let matrix = Matrix::init(10f32, (2,2));
     ///
@@ -837,7 +837,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let matrix1 = Matrix::init(10.0, (2,2));
     /// let matrix2 = Matrix::init(10.0, (2,2));
@@ -851,7 +851,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let matrix1 = Matrix::init(20.0, (2,2));
     /// let matrix2 = Matrix::init(10.0, (2,2));
@@ -865,7 +865,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let matrix1 = Matrix::init(10.0, (2,2));
     /// let matrix2 = Matrix::init(15.0, (2,2));
@@ -879,7 +879,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let matrix1 = Matrix::init(20.0, (2,2));
     /// let matrix2 = Matrix::init(10.0, (2,2));
@@ -893,7 +893,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let matrix1 = Matrix::init(20.0, (2,2));
     /// let matrix2 = Matrix::init(10.0, (2,2));
@@ -907,7 +907,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let matrix = Matrix::init(20.0, (2,2));
     /// let value: f32 = 2.0;
@@ -920,7 +920,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let matrix = Matrix::init(20.0, (2,2));
     /// let value: f32 = 2.0;
@@ -933,7 +933,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let matrix = Matrix::init(20.0, (2,2));
     /// let value: f32 = 2.0;
@@ -946,7 +946,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let matrix = Matrix::init(20.0, (2,2));
     /// let value: f32 = 2.0;
@@ -962,7 +962,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let matrix = Matrix::init(2.0, (2,2));
     ///
@@ -977,8 +977,8 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
-    /// use kaffe::constants::E;
+    /// use sukker::{Matrix, MatrixLinAlg};
+    /// use sukker::constants::E;
     ///
     /// let matrix = Matrix::init(E, (2,2));
     ///
@@ -993,8 +993,8 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
-    /// use kaffe::constants::E;
+    /// use sukker::{Matrix, MatrixLinAlg};
+    /// use sukker::constants::E;
     ///
     /// let matrix = Matrix::init(E, (2,2));
     ///
@@ -1009,7 +1009,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let matrix = Matrix::init(2.0, (2,2));
     ///
@@ -1024,7 +1024,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let matrix = Matrix::init(20.0, (2,2));
     ///
@@ -1039,7 +1039,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let mut matrix1 = Matrix::init(20.0, (2,2));
     /// let matrix2 = Matrix::init(2.0, (2,2));
@@ -1055,7 +1055,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let mut matrix1 = Matrix::init(20.0, (2,2));
     /// let matrix2 = Matrix::init(2.0, (2,2));
@@ -1071,7 +1071,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let mut matrix1 = Matrix::init(20.0, (2,2));
     /// let matrix2 = Matrix::init(2.0, (2,2));
@@ -1087,7 +1087,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let mut matrix1 = Matrix::init(20.0, (2,2));
     /// let matrix2 = Matrix::init(2.0, (2,2));
@@ -1103,7 +1103,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let mut matrix = Matrix::init(20.0, (2,2));
     /// let value: f32 = 2.0;
@@ -1118,7 +1118,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let mut matrix = Matrix::init(20.0, (2,2));
     ///
@@ -1133,7 +1133,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let mut matrix = Matrix::init(20.0, (2,2));
     /// let value: f32 = 2.0;
@@ -1149,7 +1149,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let mut matrix = Matrix::init(20.0, (2,2));
     /// let value: f32 = 2.0;
@@ -1165,7 +1165,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let mut matrix = Matrix::init(20.0, (2,2));
     /// let value: f32 = 2.0;
@@ -1181,7 +1181,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let mut matrix = Matrix::init(20.0, (2,2));
     /// let value: f32 = 2.0;
@@ -1197,7 +1197,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let mut matrix1 = Matrix::init(2.0, (2,4));
     /// let matrix2 = Matrix::init(2.0, (4,2));
@@ -1214,7 +1214,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let matrix = Matrix::init(2.0, (2,2));
     /// let det = matrix.determinant();
@@ -1228,7 +1228,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let mut matrix = Matrix::init(2.0, (2,100));
     /// matrix.transpose();
@@ -1242,7 +1242,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let mut matrix = Matrix::init(2.0, (2,100));
     /// matrix.t();
@@ -1256,7 +1256,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let matrix = Matrix::init(2.0, (2,100));
     /// let result = matrix.transpose_copy();
@@ -1270,7 +1270,7 @@ pub trait MatrixLinAlg {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixLinAlg};
+    /// use sukker::{Matrix, MatrixLinAlg};
     ///
     /// let mut matrix = Matrix::init(2.0, (2,100));
     ///
@@ -1555,7 +1555,7 @@ pub trait MatrixPredicates {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixPredicates};
+    /// use sukker::{Matrix, MatrixPredicates};
     ///
     /// let matrix = Matrix::init(2.0, (2,4));
     ///
@@ -1570,7 +1570,7 @@ pub trait MatrixPredicates {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixPredicates};
+    /// use sukker::{Matrix, MatrixPredicates};
     ///
     /// let matrix = Matrix::init(2.0, (2,4));
     ///
@@ -1585,7 +1585,7 @@ pub trait MatrixPredicates {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixPredicates};
+    /// use sukker::{Matrix, MatrixPredicates};
     ///
     /// let matrix = Matrix::init(2.0, (2,4));
     ///
@@ -1600,7 +1600,7 @@ pub trait MatrixPredicates {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixPredicates};
+    /// use sukker::{Matrix, MatrixPredicates};
     ///
     /// let matrix = Matrix::randomize_range(1.0, 4.0, (2,4));
     ///
@@ -1615,7 +1615,7 @@ pub trait MatrixPredicates {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixPredicates};
+    /// use sukker::{Matrix, MatrixPredicates};
     ///
     /// let matrix = Matrix::init(2f32, (2,4));
     ///
@@ -1630,7 +1630,7 @@ pub trait MatrixPredicates {
     /// # Examples
     ///
     /// ```
-    /// use kaffe::{Matrix, MatrixPredicates};
+    /// use sukker::{Matrix, MatrixPredicates};
     ///
     /// let matrix = Matrix::init(2.0, (2,4));
     ///
