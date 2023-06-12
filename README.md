@@ -8,9 +8,9 @@
 
 
 Linear algebra in Rust!
-In version 1.1.0, there is now added support for several datatypes,
-with the tradeof being no rayon added just yet.
-This and more linear algebra functions to be added
+Parallelized using rayon with support for many common datatypes,
+sukker tries to make matrix operations easier for the user, 
+while still giving you as the user the performance you deserve
 
 ## Examples
 
@@ -19,10 +19,10 @@ This and more linear algebra functions to be added
 use sukker::Matrix;
 
 fn main() {
-    let a = Matrix::init(2f32, (2,3));
-    let b = Matrix::init(4f32, (2,3));
+    let a = Matrix::<f32>::randomize((7,56));
+    let b = Matrix::<f32>::randomize((56,8));
 
-    let c = a.add(&b);
+    let c = a.matmul(&b);
 
     // To print this beautiful matrix:
     c.print();

@@ -44,6 +44,8 @@ pub struct Matrix<'a, T>
 where
     T: MatrixElement,
     <T as FromStr>::Err: Error + 'static,
+    Vec<T>: IntoParallelIterator,
+    Vec<&'a T>: IntoParallelRefIterator<'a>,
 {
     pub data: Vec<T>,
     pub shape: (usize, usize),
@@ -67,6 +69,8 @@ pub trait MatrixElement:
     + One
     + PartialEq
     + Zero
+    + Send
+    + Sync
     + Num
     + NumOps
     + NumAssignOps
@@ -87,6 +91,8 @@ impl<'a, T> FromStr for Matrix<'a, T>
 where
     T: MatrixElement,
     <T as FromStr>::Err: Error + 'static,
+    Vec<T>: IntoParallelIterator,
+    Vec<&'a T>: IntoParallelRefIterator<'a>,
 {
     type Err = anyhow::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -116,6 +122,8 @@ impl<'a, T> Matrix<'a, T>
 where
     T: MatrixElement,
     <T as FromStr>::Err: Error + 'static,
+    Vec<T>: IntoParallelIterator,
+    Vec<&'a T>: IntoParallelRefIterator<'a>,
 {
     /// Prints out the matrix based on shape. Also outputs datatype
     ///
@@ -159,6 +167,8 @@ impl<'a, T> Matrix<'a, T>
 where
     T: MatrixElement,
     <T as FromStr>::Err: Error,
+    Vec<T>: IntoParallelIterator,
+    Vec<&'a T>: IntoParallelRefIterator<'a>,
 {
     /// Creates a new matrix from a vector and the shape you want.
     /// Will default init if it does not work
@@ -436,7 +446,7 @@ where
 
         let len: usize = rows * cols;
 
-        let data = vec![value.clone(); len];
+        let data = vec![value; len];
 
         Self::new(data, shape)
     }
@@ -455,6 +465,8 @@ impl<'a, T> Matrix<'a, T>
 where
     T: MatrixElement + Div<Output = T> + Sum<T>,
     <T as FromStr>::Err: Error + 'static,
+    Vec<T>: IntoParallelIterator,
+    Vec<&'a T>: IntoParallelRefIterator<'a>,
 {
     /// Converts matrix to a tensor
     pub fn to_tensor(&self) {
@@ -586,7 +598,7 @@ where
         // Matrix must have at least one element, thus we can unwrap
         *self
             .data
-            .iter()
+            .par_iter()
             .max_by(|a, b| a.partial_cmp(b).unwrap())
             .unwrap()
     }
@@ -607,7 +619,7 @@ where
         // Matrix must have at least one element, thus we can unwrap
         *self
             .data
-            .iter()
+            .par_iter()
             .min_by(|a, b| a.partial_cmp(b).unwrap())
             .unwrap()
     }
@@ -633,7 +645,7 @@ where
                 }
 
                 self.data
-                    .iter()
+                    .par_iter()
                     .skip(rowcol * self.ncols)
                     .take(self.ncols)
                     .max_by(|a, b| a.partial_cmp(b).unwrap())
@@ -646,7 +658,7 @@ where
                 }
 
                 self.data
-                    .iter()
+                    .par_iter()
                     .skip(rowcol)
                     .step_by(self.ncols)
                     .max_by(|a, b| a.partial_cmp(b).unwrap())
@@ -676,7 +688,7 @@ where
                 }
 
                 self.data
-                    .iter()
+                    .par_iter()
                     .skip(rowcol * self.ncols)
                     .take(self.ncols)
                     .min_by(|a, b| a.partial_cmp(b).unwrap())
@@ -689,7 +701,7 @@ where
                 }
 
                 self.data
-                    .iter()
+                    .par_iter()
                     .skip(rowcol)
                     .step_by(self.ncols)
                     .min_by(|a, b| a.partial_cmp(b).unwrap())
@@ -710,7 +722,7 @@ where
     /// assert_eq!(matrix.cumsum(), 40.0);
     /// ```
     pub fn cumsum(&self) -> T {
-        self.data.iter().copied().sum()
+        self.data.par_iter().copied().sum()
     }
 
     /// Multiplies  all elements in matrix
@@ -725,7 +737,7 @@ where
     /// assert_eq!(matrix.cumprod(), 10000.0);
     /// ```
     pub fn cumprod(&self) -> T {
-        self.data.iter().copied().product()
+        self.data.par_iter().copied().product()
     }
 
     /// Gets the average of the matrix
@@ -744,7 +756,7 @@ where
 
         self.data.iter().for_each(|_| size += T::one());
 
-        let tot: T = self.data.iter().copied().sum::<T>();
+        let tot: T = self.data.par_iter().copied().sum::<T>();
 
         tot / size
     }
@@ -820,14 +832,14 @@ where
         match dimension {
             Dimension::Row => self
                 .data
-                .iter()
+                .par_iter()
                 .skip(rowcol * self.ncols)
                 .take(self.ncols)
                 .copied()
                 .sum(),
             Dimension::Col => self
                 .data
-                .iter()
+                .par_iter()
                 .skip(rowcol)
                 .step_by(self.ncols)
                 .copied()
@@ -852,14 +864,14 @@ where
         match dimension {
             Dimension::Row => self
                 .data
-                .iter()
+                .par_iter()
                 .skip(rowcol * self.ncols)
                 .take(self.ncols)
                 .copied()
                 .product(),
             Dimension::Col => self
                 .data
-                .iter()
+                .par_iter()
                 .skip(rowcol)
                 .step_by(self.ncols)
                 .copied()
@@ -1303,6 +1315,8 @@ impl<'a, T> MatrixLinAlg<'a, T> for Matrix<'a, T>
 where
     T: MatrixElement,
     <T as FromStr>::Err: Error + 'static,
+    Vec<T>: IntoParallelIterator,
+    Vec<&'a T>: IntoParallelRefIterator<'a>,
 {
     fn add(&self, other: &Self) -> Self {
         if self.nrows != other.nrows || self.ncols != other.ncols {
@@ -1381,25 +1395,25 @@ where
     }
 
     fn add_val(&self, val: T) -> Self {
-        let data: Vec<T> = self.data.iter().map(|&e| e + val).collect();
+        let data: Vec<T> = self.data.par_iter().map(|&e| e + val).collect();
 
         Self::new(data, self.shape)
     }
 
     fn sub_val(&self, val: T) -> Self {
-        let data: Vec<T> = self.data.iter().map(|&e| e - val).collect();
+        let data: Vec<T> = self.data.par_iter().map(|&e| e - val).collect();
 
         Self::new(data, self.shape)
     }
 
     fn mul_val(&self, val: T) -> Self {
-        let data: Vec<T> = self.data.iter().map(|&e| e * val).collect();
+        let data: Vec<T> = self.data.par_iter().map(|&e| e * val).collect();
 
         Self::new(data, self.shape)
     }
 
     fn div_val(&self, val: T) -> Self {
-        let data: Vec<T> = self.data.iter().map(|&e| e / val).collect();
+        let data: Vec<T> = self.data.par_iter().map(|&e| e / val).collect();
 
         Self::new(data, self.shape)
     }
@@ -1426,63 +1440,63 @@ where
     }
 
     fn pow(&self, val: usize) -> Self {
-        let data: Vec<T> = self.data.iter().map(|&e| pow(e, val)).collect();
+        let data: Vec<T> = self.data.par_iter().map(|&e| pow(e, val)).collect();
 
         Self::new(data, self.shape)
     }
 
     fn abs(&self) -> Self {
-        let data: Vec<T> = self.data.iter().map(|&e| abs(e)).collect();
+        let data: Vec<T> = self.data.par_iter().map(|&e| abs(e)).collect();
 
         Self::new(data, self.shape)
     }
 
     fn add_self(&mut self, other: &Self) {
         self.data
-            .iter_mut()
+            .par_iter_mut()
             .zip(&other.data)
             .for_each(|(a, b)| *a += *b);
     }
 
     fn sub_self(&mut self, other: &Self) {
         self.data
-            .iter_mut()
+            .par_iter_mut()
             .zip(&other.data)
             .for_each(|(a, b)| *a -= *b);
     }
 
     fn mul_self(&mut self, other: &Self) {
         self.data
-            .iter_mut()
+            .par_iter_mut()
             .zip(&other.data)
             .for_each(|(a, b)| *a *= *b);
     }
 
     fn div_self(&mut self, other: &Self) {
         self.data
-            .iter_mut()
+            .par_iter_mut()
             .zip(&other.data)
             .for_each(|(a, b)| *a /= *b);
     }
 
     fn abs_self(&mut self) {
-        self.data.iter_mut().for_each(|e| *e = abs(*e))
+        self.data.par_iter_mut().for_each(|e| *e = abs(*e))
     }
 
     fn add_val_self(&mut self, val: T) {
-        self.data.iter_mut().for_each(|e| *e += val);
+        self.data.par_iter_mut().for_each(|e| *e += val);
     }
 
     fn sub_val_self(&mut self, val: T) {
-        self.data.iter_mut().for_each(|e| *e -= val);
+        self.data.par_iter_mut().for_each(|e| *e -= val);
     }
 
     fn mul_val_self(&mut self, val: T) {
-        self.data.iter_mut().for_each(|e| *e *= val);
+        self.data.par_iter_mut().for_each(|e| *e *= val);
     }
 
     fn div_val_self(&mut self, val: T) {
-        self.data.iter_mut().for_each(|e| *e /= val);
+        self.data.par_iter_mut().for_each(|e| *e /= val);
     }
 
     fn matmul(&self, other: &Self) -> Self {
@@ -1501,12 +1515,10 @@ where
 
         for i in 0..r1 {
             for j in 0..c2 {
-                let dot_product = (0..c1)
-                    .into_iter()
+                data[at!(i, j, c2)] = (0..c1)
+                    .into_par_iter()
                     .map(|k| self.data[at!(i, k, c1)] * t_other.data[at!(j, k, t_other.ncols)])
                     .sum();
-
-                data[at!(i, j, c2)] = dot_product;
             }
         }
 
@@ -1547,7 +1559,7 @@ where
 {
     fn count_where<F>(&'a self, pred: F) -> usize
     where
-        F: Fn(&T) -> bool;
+        F: Fn(&T) -> bool + Sync;
 
     /// Sums all occurances where predicate holds
     ///
@@ -1562,7 +1574,7 @@ where
     /// ```
     fn sum_where<F>(&self, pred: F) -> T
     where
-        F: Fn(&T) -> bool;
+        F: Fn(&T) -> bool + Sync;
 
     /// Return whether or not a predicate holds at least once
     ///
@@ -1577,7 +1589,7 @@ where
     /// ```
     fn any<F>(&self, pred: F) -> bool
     where
-        F: Fn(&T) -> bool;
+        F: Fn(&T) -> bool + Sync + Send;
 
     /// Returns whether or not predicate holds for all values
     ///
@@ -1592,7 +1604,7 @@ where
     /// ```
     fn all<F>(&self, pred: F) -> bool
     where
-        F: Fn(&T) -> bool;
+        F: Fn(&T) -> bool + Sync + Send;
 
     /// Finds first index where predicates holds if possible
     ///
@@ -1607,7 +1619,7 @@ where
     /// ```
     fn find<F>(&self, pred: F) -> Option<Shape>
     where
-        F: Fn(&T) -> bool;
+        F: Fn(&T) -> bool + Sync;
 
     /// Finds all indeces where predicates holds if possible
     ///
@@ -1622,45 +1634,51 @@ where
     /// ```
     fn find_all<F>(&self, pred: F) -> Option<Vec<Shape>>
     where
-        F: Fn(&T) -> bool;
+        F: Fn(&T) -> bool + Sync;
 }
 
 impl<'a, T> MatrixPredicates<'a, T> for Matrix<'a, T>
 where
     T: MatrixElement,
     <T as FromStr>::Err: Error + 'static,
+    Vec<T>: IntoParallelIterator,
+    Vec<&'a T>: IntoParallelRefIterator<'a>,
 {
     fn count_where<F>(&'a self, pred: F) -> usize
     where
-        F: Fn(&T) -> bool,
+        F: Fn(&T) -> bool + Sync,
     {
-        self.data.iter().filter(|&e| pred(e)).count()
+        self.data.par_iter().filter(|&e| pred(e)).count()
     }
 
     fn sum_where<F>(&self, pred: F) -> T
     where
-        F: Fn(&T) -> bool,
+        F: Fn(&T) -> bool + Sync,
     {
-        self.data.iter().filter(|&e| pred(e)).copied().sum::<T>()
+        self.data
+            .par_iter()
+            .filter(|&e| pred(e))
+            .copied()
+            .sum::<T>()
     }
 
     fn any<F>(&self, pred: F) -> bool
     where
-        F: Fn(&T) -> bool,
+        F: Fn(&T) -> bool + Sync + Send,
     {
-        self.data.iter().any(pred)
+        self.data.par_iter().any(pred)
     }
 
     fn all<F>(&self, pred: F) -> bool
     where
-        F: Fn(&T) -> bool,
+        F: Fn(&T) -> bool + Sync + Send,
     {
-        self.data.iter().all(pred)
+        self.data.par_iter().all(pred)
     }
 
     fn find<F>(&self, pred: F) -> Option<Shape>
     where
-        F: Fn(&T) -> bool,
+        F: Fn(&T) -> bool + Sync,
     {
         if let Some((idx, _)) = self.data.iter().find_position(|&e| pred(e)) {
             return Some(self.inverse_at(idx));
@@ -1671,11 +1689,11 @@ where
 
     fn find_all<F>(&self, pred: F) -> Option<Vec<Shape>>
     where
-        F: Fn(&T) -> bool,
+        F: Fn(&T) -> bool + Sync,
     {
         let data: Vec<Shape> = self
             .data
-            .iter()
+            .par_iter()
             .enumerate()
             .filter_map(|(idx, elem)| {
                 if pred(elem) {
