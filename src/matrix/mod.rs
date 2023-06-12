@@ -4,7 +4,9 @@
 //!
 //! Currently supported datatypes are i32, i64, f32 and f64
 use std::{
+    error::Error,
     fmt::{Debug, Display},
+    fs,
     marker::PhantomData,
     ops::Div,
     str::FromStr,
@@ -12,7 +14,7 @@ use std::{
 
 use itertools::{iproduct, Itertools};
 use num_traits::{
-    abs_sub, pow,
+    pow,
     sign::{abs, Signed},
     Num, NumAssign, NumAssignOps, NumAssignRef, NumOps, One, Zero,
 };
@@ -41,6 +43,7 @@ macro_rules! at {
 pub struct Matrix<'a, T>
 where
     T: MatrixElement,
+    <T as FromStr>::Err: Error + 'static,
 {
     pub data: Vec<T>,
     pub shape: (usize, usize),
@@ -80,10 +83,39 @@ impl MatrixElement for i16 {}
 impl MatrixElement for i32 {}
 impl MatrixElement for i64 {}
 
+impl<'a, T> FromStr for Matrix<'a, T>
+where
+    T: MatrixElement,
+    <T as FromStr>::Err: Error + 'static,
+{
+    type Err = anyhow::Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // Parse the input string and construct the matrix dynamically
+        let v: Vec<T> = s
+            .trim()
+            .lines()
+            .map(|l| {
+                l.split_whitespace()
+                    .map(|num| num.parse::<T>().unwrap())
+                    .collect::<Vec<T>>()
+            })
+            .collect::<Vec<Vec<T>>>()
+            .into_iter()
+            .flatten()
+            .collect();
+
+        let rows = s.trim().lines().count();
+        let cols = s.trim().lines().nth(0).unwrap().split_whitespace().count();
+
+        Ok(Self::new(v, (rows, cols)))
+    }
+}
+
 /// Printer functions for the matrix
 impl<'a, T> Matrix<'a, T>
 where
     T: MatrixElement,
+    <T as FromStr>::Err: Error + 'static,
 {
     /// Prints out the matrix based on shape. Also outputs datatype
     ///
@@ -126,6 +158,7 @@ where
 impl<'a, T> Matrix<'a, T>
 where
     T: MatrixElement,
+    <T as FromStr>::Err: Error,
 {
     /// Creates a new matrix from a vector and the shape you want.
     /// Will default init if it does not work
@@ -382,12 +415,19 @@ where
     /// Parses from file, but will return a default matrix if nothing is given
     ///
     /// # Examples
+    ///
+    /// ```
+    /// use sukker::Matrix;
+    ///
+    /// // let m: Matrix<f32> = Matrix::from_file("../../test.txt");
+    ///
+    /// // m.print();
+    /// ```
     pub fn from_file(path: &'static str) -> Self {
-        todo!()
-        // let data =
-        //     fs::read_to_string(path).unwrap_or_else(|_| panic!("Failed to read file: {}", path));
-        //
-        // data.parse::<Self>().unwrap_or_else(|_| Self::default())
+        let data =
+            fs::read_to_string(path).unwrap_or_else(|_| panic!("Failed to read file: {}", path));
+
+        data.parse::<Self>().unwrap_or_else(|_| Self::default())
     }
 
     /// HELPER, name is too retarded for public usecases
@@ -414,6 +454,7 @@ pub enum Dimension {
 impl<'a, T> Matrix<'a, T>
 where
     T: MatrixElement + Div<Output = T> + Sum<T>,
+    <T as FromStr>::Err: Error + 'static,
 {
     /// Converts matrix to a tensor
     pub fn to_tensor(&self) {
@@ -1261,6 +1302,7 @@ where
 impl<'a, T> MatrixLinAlg<'a, T> for Matrix<'a, T>
 where
     T: MatrixElement,
+    <T as FromStr>::Err: Error + 'static,
 {
     fn add(&self, other: &Self) -> Self {
         if self.nrows != other.nrows || self.ncols != other.ncols {
@@ -1586,6 +1628,7 @@ where
 impl<'a, T> MatrixPredicates<'a, T> for Matrix<'a, T>
 where
     T: MatrixElement,
+    <T as FromStr>::Err: Error + 'static,
 {
     fn count_where<F>(&'a self, pred: F) -> usize
     where
