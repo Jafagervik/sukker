@@ -25,9 +25,12 @@ macro_rules! at {
 
 /// Represents all data we want to get
 #[derive(Clone, PartialEq, PartialOrd)]
-pub struct Matrix {
+pub struct Matrix<T>
+where
+    T: PartialOrd,
+{
     /// Data contained inside the matrix with f32 values
-    pub data: Vec<f32>,
+    pub data: Vec<T>,
     /// Shape of matrix, (rows, cols)
     pub shape: Shape,
     /// Number of rows
@@ -36,7 +39,7 @@ pub struct Matrix {
     pub ncols: usize,
 }
 
-impl Debug for Matrix {
+impl<T> Debug for Matrix<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[");
 
@@ -58,7 +61,7 @@ impl Debug for Matrix {
     }
 }
 
-impl FromStr for Matrix {
+impl<T> FromStr for Matrix<T> {
     type Err = Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         // Parse the input string and construct the matrix dynamically
@@ -83,7 +86,7 @@ impl FromStr for Matrix {
 }
 
 /// Printer functions for the matrix
-impl Matrix {
+impl<T> Matrix<T> {
     /// Prints out the matrix based on shape. Also outputs datatype
     ///
     /// # Examples
@@ -122,7 +125,7 @@ impl Matrix {
 }
 
 /// Implementations of all creatins of matrices
-impl Matrix {
+impl<T> Matrix<T> {
     /// Creates a new matrix from a vector and the shape you want.
     /// Will default init if it does not work
     ///
@@ -402,7 +405,7 @@ pub enum Dimension {
 }
 
 /// Regular matrix methods that are not operating math on them
-impl Matrix {
+impl<T> Matrix<T> {
     /// Converts matrix to a tensor
     pub fn to_tensor(&self) {
         todo!()
@@ -1279,7 +1282,7 @@ pub trait MatrixLinAlg {
     fn eigenvalue(&self) -> f32;
 }
 
-impl MatrixLinAlg for Matrix {
+impl<T> MatrixLinAlg for Matrix<T> {
     fn add(&self, other: &Self) -> Self {
         if self.rows() != other.rows() || self.cols() != other.cols() {
             panic!("NOOO!");
@@ -1537,7 +1540,7 @@ impl MatrixLinAlg for Matrix {
         self.transpose()
     }
 
-    fn transpose_copy(&self) -> Matrix {
+    fn transpose_copy(&self) -> Self {
         let mut res = self.clone();
         res.transpose();
         res
@@ -1641,7 +1644,7 @@ pub trait MatrixPredicates {
         F: Fn(&'a f32) -> bool + 'static;
 }
 
-impl MatrixPredicates for Matrix {
+impl<T> MatrixPredicates for Matrix<T> {
     fn count_where<'a, F>(&'a self, pred: F) -> usize
     where
         F: Fn(&'a f32) -> bool + 'static,
