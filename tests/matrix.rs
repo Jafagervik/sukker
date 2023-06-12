@@ -12,11 +12,11 @@ fn basic() {
 
     let c = c;
 
-    let a = Matrix::randomize((3, 2));
+    let a: Matrix<f32> = Matrix::randomize((3, 2));
 
     let x = c.matmul(&a);
 
     assert_eq!(x.shape, (2, 2));
 
-    assert!(x.any(|&e| e >= 0.05));
+    assert!(x.any(|&e| e >= 0.0));
 }

@@ -1,6 +1,6 @@
 [package]
 name = "sukker"
-version = "1.0.2"
+version = "1.0.3"
 edition = "2021"
 authors = ["Joergen Aleksander Fagervik <jorgenafagervik@gmail.com>"]
 license = "MIT OR Apache-2.0"
@@ -13,7 +13,9 @@ keywords = ["ai","matrix",  "numpy"]
 categories = ["mathematics", "science"]
 
 [dependencies]
+anyhow = "1.0.71"
 itertools = "0.10.5"
+num-traits = "0.2.15"
 rand = "0.8.5"
 rayon = "1.7.0"
 

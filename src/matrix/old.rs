@@ -1,34 +1,26 @@
-//! Making working with matrices in rust easier!
-//!
-//! For now, only basic operations are allowed, but more are to be added
-//!
-//! Currently supported datatypes are i32, i64, f32 and f64
+//! Core module for defining everything matrices
+#![warn(missing_docs)]
+
+// mod determinant_helpers;
+
+// use determinant_helpers::*;
+use itertools::{iproduct, Itertools};
+use rand::Rng;
+use rayon::prelude::*;
+use std::fmt::Display;
+//use std::fmt::Display;
+use std::fs;
+use std::iter::Sum;
+use std::marker::PhantomData;
+use std::ops::{Add, Div, Mul, Sub};
+use std::process::Output;
 use std::{
-    fmt::{Debug, Display},
-    marker::PhantomData,
-    ops::Div,
+    fmt::{Debug, Error},
     str::FromStr,
 };
 
-use itertools::{iproduct, Itertools};
-use num_traits::{
-    abs_sub, pow,
-    sign::{abs, Signed},
-    Num, NumAssign, NumAssignOps, NumAssignRef, NumOps, One, Zero,
-};
-use rand::{distributions::uniform::SampleUniform, Rng};
-use rayon::prelude::*;
-use std::iter::{Product, Sum};
-
 /// Type definitions
 pub type Shape = (usize, usize);
-
-/// Helper method to swap to usizes
-fn swap(lhs: &mut usize, rhs: &mut usize) {
-    let temp = *lhs;
-    *lhs = *rhs;
-    *rhs = temp;
-}
 
 /// calculates index for matrix
 macro_rules! at {
@@ -37,48 +29,95 @@ macro_rules! at {
     };
 }
 
+/// Represents all data we want to get
 #[derive(Clone, PartialEq, PartialOrd)]
 pub struct Matrix<'a, T>
 where
     T: MatrixElement,
 {
+    /// Data contained inside the matrix with f32 values
     pub data: Vec<T>,
-    pub shape: (usize, usize),
+    /// Shape of matrix, (rows, cols)
+    pub shape: Shape,
+    /// Number of rows
     pub nrows: usize,
+    /// Number of cols
     pub ncols: usize,
     _lifetime: PhantomData<&'a T>,
 }
 
-/// Traits needed for matrix element
+/// These are the traits needed to be valid datatype in matrix
 pub trait MatrixElement:
     Copy
     + Clone
     + PartialOrd
-    + Signed
-    + Sum
-    + Product
+    + Add
+    + Sub
+    + Mul
+    + Div
     + Display
     + Debug
     + FromStr
-    + Default
-    + One
-    + PartialEq
-    + Zero
-    + Num
-    + NumOps
-    + NumAssignOps
-    + NumAssignRef
-    + NumAssign
-    + SampleUniform
+    + rand::distributions::uniform::SampleUniform
 {
 }
 
 impl MatrixElement for f32 {}
 impl MatrixElement for f64 {}
-impl MatrixElement for i8 {}
-impl MatrixElement for i16 {}
 impl MatrixElement for i32 {}
 impl MatrixElement for i64 {}
+
+impl<'a, T> Debug for Matrix<'a, T>
+where
+    T: MatrixElement,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[");
+
+        for i in 0..self.rows() {
+            for j in 0..self.cols() {
+                if i == 0 {
+                    write!(f, "{} ", self.data[at!(i, j, self.cols())]);
+                } else {
+                    write!(f, " {}", self.data[at!(i, j, self.cols())]);
+                }
+            }
+            // Print ] on same line if youre at the end
+            if i == self.shape.0 - 1 {
+                break;
+            }
+            write!(f, "\n");
+        }
+        write!(f, "], dtype={}", std::any::type_name::<T>())
+    }
+}
+
+impl<'a, T> FromStr for Matrix<'a, T>
+where
+    T: MatrixElement,
+{
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // Parse the input string and construct the matrix dynamically
+        let v: Vec<T> = s
+            .trim()
+            .lines()
+            .map(|l| {
+                l.split_whitespace()
+                    .map(|num| num.parse::<T>().unwrap())
+                    .collect::<Vec<T>>()
+            })
+            .collect::<Vec<Vec<T>>>()
+            .into_iter()
+            .flatten()
+            .collect();
+
+        let rows = s.trim().lines().count();
+        let cols = s.trim().lines().nth(0).unwrap().split_whitespace().count();
+
+        Ok(Self::new(v, (rows, cols)))
+    }
+}
 
 /// Printer functions for the matrix
 impl<'a, T> Matrix<'a, T>
@@ -92,7 +131,7 @@ where
     /// ```
     /// use sukker::Matrix;
     ///
-    /// let matrix: Matrix<i32> = Matrix::eye(2);
+    /// let matrix = Matrix::eye(2);
     /// matrix.print();
     ///
     /// ```
@@ -107,9 +146,9 @@ where
         for i in 0..self.nrows {
             for j in 0..self.ncols {
                 if i == 0 {
-                    print!("{:.2} ", self.get(i, j));
+                    print!("{:.2} ", self.data[at!(i, j, self.ncols)]);
                 } else {
-                    print!(" {:.2}", self.get(i, j));
+                    print!(" {:.2}", self.data[at!(i, j, self.ncols)]);
                 }
             }
             // Print ] on same line if youre at the end
@@ -161,14 +200,15 @@ where
     /// ```
     /// use sukker::Matrix;
     ///
-    /// let matrix: Matrix<f32> = Matrix::default();
+    /// let matrix = Matrix::default();
     ///
     /// assert_eq!(matrix.size(), 9);
     /// assert_eq!(matrix.shape, (3,3));
+    /// assert_eq!(matrix.get(0,0), 0f32);
     /// ```
     pub fn default() -> Self {
         Self {
-            data: vec![T::one(); 9],
+            data: vec![0; 9],
             shape: (3, 3),
             nrows: 3,
             ncols: 3,
@@ -201,15 +241,15 @@ where
     /// ```
     /// use sukker::Matrix;
     ///
-    /// let matrix: Matrix<f32> = Matrix::eye(2);
+    /// let matrix = Matrix::eye(2);
     ///
     /// assert_eq!(matrix.data, vec![1f32, 0f32, 0f32, 1f32]);
     /// assert_eq!(matrix.shape, (2,2));
     /// ```
     pub fn eye(size: usize) -> Self {
-        let mut data: Vec<T> = vec![T::zero(); size * size];
+        let mut data: Vec<T> = vec![0; size * size];
 
-        (0..size).for_each(|i| data[i * size + i] = T::one());
+        (0..size).for_each(|i| data[i * size + i] = 1 as T);
 
         Self::new(data, (size, size))
     }
@@ -221,9 +261,9 @@ where
     /// ```
     /// use sukker::Matrix;
     ///
-    /// let matrix: Matrix<i64> = Matrix::identity(2);
+    /// let matrix = Matrix::identity(2);
     ///
-    /// assert_eq!(matrix.data, vec![1i64, 0i64, 0i64, 1i64]);
+    /// assert_eq!(matrix.data, vec![1f32, 0f32, 0f32, 1f32]);
     /// assert_eq!(matrix.shape, (2,2));
     /// ```
     pub fn identity(size: usize) -> Self {
@@ -258,13 +298,13 @@ where
     /// ```
     /// use sukker::Matrix;
     ///
-    /// let matrix: Matrix<i32> = Matrix::zeros((4,1));
+    /// let matrix = Matrix::zeros((4,1));
     ///
     /// assert_eq!(matrix.shape, (4,1));
-    /// assert_eq!(matrix.data, vec![0i32; 4]);
+    /// assert_eq!(matrix.data, vec![0f32; 4]);
     /// ```
     pub fn zeros(shape: Shape) -> Self {
-        Self::from_shape(T::zero(), shape)
+        Self::from_shape(0 as T, shape)
     }
 
     /// Creates a matrix where all values are 1.
@@ -275,13 +315,13 @@ where
     /// ```
     /// use sukker::Matrix;
     ///
-    /// let matrix: Matrix<f64> = Matrix::ones((4,1));
+    /// let matrix = Matrix::ones((4,1));
     ///
     /// assert_eq!(matrix.shape, (4,1));
-    /// assert_eq!(matrix.data, vec![1f64; 4]);
+    /// assert_eq!(matrix.data, vec![1f32; 4]);
     /// ```
     pub fn ones(shape: Shape) -> Self {
-        Self::from_shape(T::one(), shape)
+        Self::from_shape(1 as T, shape)
     }
 
     /// Creates a matrix where all values are 0.
@@ -292,14 +332,13 @@ where
     /// ```
     /// use sukker::Matrix;
     ///
-    /// let matrix1: Matrix<i8> = Matrix::default();
+    /// let matrix1 = Matrix::default();
     /// let matrix2 = Matrix::zeros_like(&matrix1);
     ///
     /// assert_eq!(matrix2.shape, matrix1.shape);
-    /// assert_eq!(matrix2.get(0,0), 0i8);
     /// ```
     pub fn zeros_like(other: &Self) -> Self {
-        Self::from_shape(T::zero(), other.shape)
+        Self::from_shape(0 as T, other.shape)
     }
 
     /// Creates a matrix where all values are 1.
@@ -310,14 +349,14 @@ where
     /// ```
     /// use sukker::Matrix;
     ///
-    /// let matrix1: Matrix<i64> = Matrix::default();
+    /// let matrix1 = Matrix::default();
     /// let matrix2 = Matrix::ones_like(&matrix1);
     ///
     /// assert_eq!(matrix2.shape, matrix1.shape);
-    /// assert_eq!(1i64, matrix2.get(0,0));
+    /// assert_eq!(1f32, matrix2.data[0]);
     /// ```
     pub fn ones_like(other: &Self) -> Self {
-        Self::from_shape(T::one(), other.shape)
+        Self::from_shape(1 as T, other.shape)
     }
 
     /// Creates a matrix where all values are random between 0 and 1.
@@ -328,13 +367,13 @@ where
     /// ```
     /// use sukker::Matrix;
     ///
-    /// let matrix1: Matrix<f32> = Matrix::default();
+    /// let matrix1 = Matrix::default();
     /// let matrix2 = Matrix::random_like(&matrix1);
     ///
     /// assert_eq!(matrix1.shape, matrix2.shape);
     /// ```
     pub fn random_like(matrix: &Self) -> Self {
-        Self::randomize_range(T::zero(), T::one(), matrix.shape)
+        Self::randomize_range(0 as T, 1 as T, matrix.shape)
     }
 
     /// Creates a matrix where all values are random between start..=end.
@@ -346,10 +385,8 @@ where
     /// use sukker::Matrix;
     ///
     /// let matrix = Matrix::randomize_range(1f32, 2f32, (2,3));
-    /// let elem = matrix.get(1,1);
     ///
     /// assert_eq!(matrix.shape, (2,3));
-    /// //assert!(elem >= 1f32 && 2f32 <= elem);
     /// ```
     pub fn randomize_range(start: T, end: T, shape: Shape) -> Self {
         let mut rng = rand::thread_rng();
@@ -371,23 +408,22 @@ where
     /// ```
     /// use sukker::Matrix;
     ///
-    /// let matrix: Matrix<f64> = Matrix::randomize((2,3));
+    /// let matrix = Matrix::randomize((2,3));
     ///
     /// assert_eq!(matrix.shape, (2,3));
     /// ```
     pub fn randomize(shape: Shape) -> Self {
-        Self::randomize_range(T::zero(), T::zero(), shape)
+        Self::randomize_range(0 as T, 1 as T, shape)
     }
 
     /// Parses from file, but will return a default matrix if nothing is given
     ///
     /// # Examples
     pub fn from_file(path: &'static str) -> Self {
-        todo!()
-        // let data =
-        //     fs::read_to_string(path).unwrap_or_else(|_| panic!("Failed to read file: {}", path));
-        //
-        // data.parse::<Self>().unwrap_or_else(|_| Self::default())
+        let data =
+            fs::read_to_string(path).unwrap_or_else(|_| panic!("Failed to read file: {}", path));
+
+        data.parse::<Self>().unwrap_or_else(|_| Self::default())
     }
 
     /// HELPER, name is too retarded for public usecases
@@ -413,7 +449,7 @@ pub enum Dimension {
 /// Regular matrix methods that are not operating math on them
 impl<'a, T> Matrix<'a, T>
 where
-    T: MatrixElement + Div<Output = T> + Sum<T>,
+    T: MatrixElement + std::iter::Sum<&'a T>,
 {
     /// Converts matrix to a tensor
     pub fn to_tensor(&self) {
@@ -441,6 +477,36 @@ where
         self.shape = new_shape;
     }
 
+    /// Get number of columns in the matrix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::Matrix;
+    ///
+    /// let matrix = Matrix::init(10.5, (2,3));
+    ///
+    /// assert_eq!(matrix.cols(), 3);
+    /// ```
+    pub fn cols(&self) -> usize {
+        self.shape.1
+    }
+
+    /// Get number of rows in the matrix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::Matrix;
+    ///
+    /// let matrix = Matrix::init(10.5, (2,3));
+    ///
+    /// assert_eq!(matrix.rows(), 2);
+    /// ```
+    pub fn rows(&self) -> usize {
+        self.shape.0
+    }
+
     /// Get the total size of the matrix
     ///
     /// # Examples
@@ -453,7 +519,7 @@ where
     /// assert_eq!(matrix.size(), 6);
     /// ```
     pub fn size(&self) -> usize {
-        self.nrows * self.ncols
+        self.shape.0 * self.shape.1
     }
 
     ///  Gets element based on is and js
@@ -468,7 +534,7 @@ where
     /// assert_eq!(matrix.get(1,2), 10.5);
     /// ```
     pub fn get(&self, i: usize, j: usize) -> T {
-        self.data[at!(i, j, self.ncols)]
+        self.data[at!(i, j, self.cols())]
     }
 
     ///  Gets a vec slice
@@ -508,7 +574,7 @@ where
     /// assert_eq!(matrix.get(1,2), 11.5);
     /// ```
     pub fn set(&mut self, i: usize, j: usize, value: T) {
-        self.data[at!(i, j, self.ncols)] = value;
+        self.data[i * j + self.ncols] = value;
     }
 
     /// Calculates the (row, col) for a matrix by a single index
@@ -524,8 +590,8 @@ where
     /// assert_eq!(inv, (0,1));
     /// ```
     pub fn inverse_at(&self, idx: usize) -> Shape {
-        let row = idx / self.ncols;
-        let col = idx % self.ncols;
+        let row = idx / self.cols();
+        let col = idx % self.cols();
 
         (row, col)
     }
@@ -587,27 +653,27 @@ where
     pub fn argmax(&self, rowcol: usize, dimension: Dimension) -> Option<T> {
         match dimension {
             Dimension::Row => {
-                if rowcol >= self.nrows - 1 {
+                if rowcol >= self.rows() - 1 {
                     return None;
                 }
 
                 self.data
-                    .iter()
-                    .skip(rowcol * self.ncols)
-                    .take(self.ncols)
+                    .par_iter()
+                    .skip(rowcol * self.cols())
+                    .take(self.cols())
                     .max_by(|a, b| a.partial_cmp(b).unwrap())
                     .copied()
             }
 
             Dimension::Col => {
-                if rowcol >= self.ncols - 1 {
+                if rowcol >= self.cols() - 1 {
                     return None;
                 }
 
                 self.data
-                    .iter()
+                    .par_iter()
                     .skip(rowcol)
-                    .step_by(self.ncols)
+                    .step_by(self.cols())
                     .max_by(|a, b| a.partial_cmp(b).unwrap())
                     .copied()
             }
@@ -630,27 +696,27 @@ where
     pub fn argmin(&self, rowcol: usize, dimension: Dimension) -> Option<T> {
         match dimension {
             Dimension::Row => {
-                if rowcol >= self.nrows - 1 {
+                if rowcol >= self.rows() - 1 {
                     return None;
                 }
 
                 self.data
-                    .iter()
-                    .skip(rowcol * self.ncols)
-                    .take(self.ncols)
+                    .par_iter()
+                    .skip(rowcol * self.cols())
+                    .take(self.cols())
                     .min_by(|a, b| a.partial_cmp(b).unwrap())
                     .copied()
             }
 
             Dimension::Col => {
-                if rowcol >= self.ncols - 1 {
+                if rowcol >= self.cols() - 1 {
                     return None;
                 }
 
                 self.data
-                    .iter()
+                    .par_iter()
                     .skip(rowcol)
-                    .step_by(self.ncols)
+                    .step_by(self.cols())
                     .min_by(|a, b| a.partial_cmp(b).unwrap())
                     .copied()
             }
@@ -669,7 +735,7 @@ where
     /// assert_eq!(matrix.cumsum(), 40.0);
     /// ```
     pub fn cumsum(&self) -> T {
-        self.data.iter().copied().sum()
+        self.data.par_iter().sum()
     }
 
     /// Multiplies  all elements in matrix
@@ -684,7 +750,7 @@ where
     /// assert_eq!(matrix.cumprod(), 10000.0);
     /// ```
     pub fn cumprod(&self) -> T {
-        self.data.iter().copied().product()
+        self.data.par_iter().product()
     }
 
     /// Gets the average of the matrix
@@ -699,13 +765,7 @@ where
     /// assert_eq!(matrix.avg(), 10.0);
     /// ```
     pub fn avg(&self) -> T {
-        let mut size: T = T::zero();
-
-        self.data.iter().for_each(|_| size += T::one());
-
-        let tot: T = self.data.iter().copied().sum::<T>();
-
-        tot / size
+        self.data.par_iter().sum::<T>() / self.data.len() as T
     }
 
     /// Gets the mean of the matrix
@@ -744,9 +804,8 @@ where
                     .sorted_by(|a, b| a.partial_cmp(&b).unwrap())
                     .skip(half - 1)
                     .take(2)
-                    .copied()
                     .sum::<T>()
-                    / (T::one() + T::one())
+                    / 2 as T
             }
             1 => {
                 let half: usize = self.data.len() / 2;
@@ -779,18 +838,11 @@ where
         match dimension {
             Dimension::Row => self
                 .data
-                .iter()
-                .skip(rowcol * self.ncols)
-                .take(self.ncols)
-                .copied()
+                .par_iter()
+                .skip(rowcol * self.cols())
+                .take(self.cols())
                 .sum(),
-            Dimension::Col => self
-                .data
-                .iter()
-                .skip(rowcol)
-                .step_by(self.ncols)
-                .copied()
-                .sum(),
+            Dimension::Col => self.data.par_iter().skip(rowcol).step_by(self.cols()).sum(),
         }
     }
 
@@ -811,17 +863,15 @@ where
         match dimension {
             Dimension::Row => self
                 .data
-                .iter()
-                .skip(rowcol * self.ncols)
-                .take(self.ncols)
-                .copied()
+                .par_iter()
+                .skip(rowcol * self.cols())
+                .take(self.cols())
                 .product(),
             Dimension::Col => self
                 .data
-                .iter()
+                .par_iter()
                 .skip(rowcol)
-                .step_by(self.ncols)
-                .copied()
+                .step_by(self.cols())
                 .product(),
         }
     }
@@ -868,8 +918,8 @@ where
     /// ```
     /// use sukker::{Matrix, MatrixLinAlg};
     ///
-    /// let matrix1 = Matrix::init(10.0f32, (2,2));
-    /// let matrix2 = Matrix::init(15.0f32, (2,2));
+    /// let matrix1 = Matrix::init(10.0, (2,2));
+    /// let matrix2 = Matrix::init(15.0, (2,2));
     ///
     /// assert_eq!(matrix1.sub_abs(&matrix2).data[0], 5.0);
     /// ```
@@ -967,6 +1017,9 @@ where
     ///
     /// let matrix = Matrix::init(2.0, (2,2));
     ///
+    /// let result_mat = matrix.log(2.0);
+    ///
+    /// assert_eq!(result_mat.data, vec![1.0, 1.0, 1.0, 1.0]);
     /// ```
     fn log(&self, base: T) -> Self;
 
@@ -976,11 +1029,13 @@ where
     ///
     /// ```
     /// use sukker::{Matrix, MatrixLinAlg};
-    /// use sukker::constants::E64;
+    /// use sukker::constants::E;
     ///
-    /// let matrix: Matrix<f64> = Matrix::init(E64, (2,2));
+    /// let matrix = Matrix::init(E, (2,2));
     ///
-    /// // TBI
+    /// let result_mat = matrix.ln();
+    ///
+    /// assert_eq!(result_mat.shape, (2,2));
     /// ```
     fn ln(&self) -> Self;
 
@@ -990,10 +1045,13 @@ where
     ///
     /// ```
     /// use sukker::{Matrix, MatrixLinAlg};
-    /// use sukker::constants::E32;
+    /// use sukker::constants::E;
     ///
-    /// let matrix = Matrix::init(E32, (2,2));
+    /// let matrix = Matrix::init(E, (2,2));
     ///
+    /// let result_mat = matrix.tanh();
+    ///
+    /// assert_eq!(result_mat.shape, (2,2));
     /// ```
     fn tanh(&self) -> Self;
 
@@ -1010,7 +1068,23 @@ where
     ///
     /// assert_eq!(result_mat.data, vec![4.0, 4.0, 4.0, 4.0]);
     /// ```
-    fn pow(&self, val: usize) -> Self;
+    fn pow(&self, val: i32) -> Self;
+
+    /// Pows each value in a matrix by val times
+    /// val can be a float
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    ///
+    /// let matrix = Matrix::init(2.0, (2,2));
+    ///
+    /// let result_mat = matrix.powf(2.0);
+    ///
+    /// assert_eq!(result_mat.data, vec![4.0, 4.0, 4.0, 4.0]);
+    /// ```
+    fn powf(&self, val: f32) -> Self;
 
     /// Takes the absolute values of the matrix
     ///
@@ -1202,6 +1276,20 @@ where
     /// ```
     fn matmul(&self, other: &Self) -> Self;
 
+    /// Find the determinant of a matrix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    ///
+    /// let matrix = Matrix::init(2.0, (2,2));
+    /// let det = matrix.determinant();
+    ///
+    /// assert_eq!(0.0, 0.0);
+    /// ```
+    fn determinant(&self) -> T;
+
     /// Transpose a matrix in-place
     ///
     /// # Examples
@@ -1260,208 +1348,226 @@ where
 
 impl<'a, T> MatrixLinAlg<'a, T> for Matrix<'a, T>
 where
-    T: MatrixElement,
+    T: MatrixElement + std::ops::Div<Output = T> + std::ops::Mul<Output = T>,
+    &'a T: PartialEq<T>,
 {
     fn add(&self, other: &Self) -> Self {
-        if self.nrows != other.nrows || self.ncols != other.ncols {
+        if self.rows() != other.rows() || self.cols() != other.cols() {
             panic!("NOOO!");
         }
 
-        let data = (0..self.nrows)
-            .flat_map(|i| (0..self.ncols).map(move |j| self.get(i, j) + other.get(i, j)))
-            .collect_vec();
+        let mut mat = Self::zeros_like(self);
 
-        Self::new(data, self.shape)
+        for i in 0..self.rows() {
+            for j in 0..self.cols() {
+                let a = self.get(i, j);
+                let b = other.get(i, j);
+                mat.data[at!(i, j, self.cols())] = a + b;
+            }
+        }
+        mat
     }
 
     fn sub(&self, other: &Self) -> Self {
-        if self.nrows != other.nrows || self.ncols != other.ncols {
+        if self.rows() != other.rows() || self.cols() != other.cols() {
             panic!("NOOO!");
         }
 
-        let data = (0..self.nrows)
-            .flat_map(|i| (0..self.ncols).map(move |j| self.get(i, j) - other.get(i, j)))
-            .collect_vec();
+        let mut mat = Self::zeros_like(self);
 
-        Self::new(data, self.shape)
+        for i in 0..self.rows() {
+            for j in 0..self.cols() {
+                let a = self.get(i, j);
+                let b = other.get(i, j);
+                mat.data[at!(i, j, self.cols())] = a - b;
+            }
+        }
+        mat
     }
 
     fn sub_abs(&self, other: &Self) -> Self {
-        if self.nrows != other.nrows || self.ncols != other.ncols {
+        if self.rows() != other.rows() || self.cols() != other.cols() {
             panic!("NOOO!");
         }
 
-        let data = (0..self.nrows)
-            .flat_map(|i| {
-                (0..self.ncols).map(move |j| {
-                    let a = self.get(i, j);
-                    let b = other.get(i, j);
+        let mut mat = Self::zeros_like(self);
 
-                    if a > b {
-                        a - b
-                    } else {
-                        b - a
-                    }
-                })
-            })
-            .collect_vec();
-
-        Self::new(data, self.shape)
+        for i in 0..self.rows() {
+            for j in 0..self.cols() {
+                let a = self.get(i, j);
+                let b = other.get(i, j);
+                mat.data[at!(i, j, self.cols())] = (a - b).abs();
+            }
+        }
+        mat
     }
 
     fn mul(&self, other: &Self) -> Self {
-        if self.nrows != other.nrows || self.ncols != other.ncols {
+        if self.rows() != other.rows() || self.cols() != other.cols() {
             panic!("NOOO!");
         }
 
-        let data = (0..self.nrows)
-            .flat_map(|i| (0..self.ncols).map(move |j| self.get(i, j) * other.get(i, j)))
-            .collect_vec();
+        let mut mat = Self::zeros_like(self);
 
-        Self::new(data, self.shape)
+        for i in 0..self.rows() {
+            for j in 0..self.cols() {
+                let a = self.get(i, j);
+                let b = other.get(i, j);
+                mat.data[at!(i, j, self.cols())] = a * b;
+            }
+        }
+        mat
     }
 
     fn div(&self, other: &Self) -> Self {
-        if self.nrows != other.nrows || self.ncols != other.ncols {
+        if self.rows() != other.rows() || self.cols() != other.cols() {
             panic!("NOOO!");
         }
 
         // TODO: Double check
-        if other.any(|e| e == &T::zero()) {
+        if other.any(|e| e == &0 as T) {
             panic!("NOOOOO")
         }
 
-        let data = (0..self.nrows)
-            .flat_map(|i| (0..self.ncols).map(move |j| self.get(i, j) / other.get(i, j)))
-            .collect_vec();
+        let mut mat = Self::zeros_like(self);
 
-        Self::new(data, self.shape)
+        for i in 0..self.rows() {
+            for j in 0..self.cols() {
+                let a = self.get(i, j);
+                let b = other.get(i, j);
+                mat.data[at!(i, j, self.cols())] = a / b;
+            }
+        }
+        mat
     }
 
     fn add_val(&self, val: T) -> Self {
-        let data: Vec<T> = self.data.iter().map(|&e| e + val).collect();
+        let data: Vec<T> = self.data.par_iter().map(|&e| e + val).collect();
 
         Self::new(data, self.shape)
     }
 
     fn sub_val(&self, val: T) -> Self {
-        let data: Vec<T> = self.data.iter().map(|&e| e - val).collect();
+        let data: Vec<T> = self.data.par_iter().map(|&e| e - val).collect();
 
         Self::new(data, self.shape)
     }
 
     fn mul_val(&self, val: T) -> Self {
-        let data: Vec<T> = self.data.iter().map(|&e| e * val).collect();
+        let data: Vec<T> = self.data.par_iter().map(|&e| e * val).collect();
 
         Self::new(data, self.shape)
     }
 
     fn div_val(&self, val: T) -> Self {
-        let data: Vec<T> = self.data.iter().map(|&e| e / val).collect();
+        let data: Vec<T> = self.data.par_iter().map(|&e| e / val).collect();
 
         Self::new(data, self.shape)
     }
 
     fn log(&self, base: T) -> Self {
-        unimplemented!()
-        // let data: Vec<T> = self.data.iter().map(|&e| e.log(base)).collect();
-        //
-        // Self::new(data, self.shape)
+        let data: Vec<T> = self.data.par_iter().map(|&e| e.log(base)).collect();
+
+        Self::new(data, self.shape)
     }
 
     fn ln(&self) -> Self {
-        unimplemented!()
-        // let data: Vec<T> = self.data.iter().map(|&e| e.ln()).collect();
-        //
-        // Self::new(data, self.shape)
+        let data: Vec<T> = self.data.par_iter().map(|&e| e.ln()).collect();
+
+        Self::new(data, self.shape)
     }
 
     fn tanh(&self) -> Self {
-        unimplemented!()
-        // let data: Vec<T> = self.data.iter().map(|&e| e.tanh()).collect();
-        //
-        // Self::new(data, self.shape)
+        let data: Vec<T> = self.data.par_iter().map(|&e| e.tanh()).collect();
+
+        Self::new(data, self.shape)
     }
 
-    fn pow(&self, val: usize) -> Self {
-        let data: Vec<T> = self.data.iter().map(|&e| pow(e, val)).collect();
+    fn pow(&self, val: i32) -> Self {
+        let data: Vec<T> = self.data.par_iter().map(|&e| e.powi(val)).collect();
+
+        Self::new(data, self.shape)
+    }
+
+    fn powf(&self, val: f32) -> Self {
+        let data: Vec<T> = self.data.par_iter().map(|&e| e.powf(val)).collect();
 
         Self::new(data, self.shape)
     }
 
     fn abs(&self) -> Self {
-        let data: Vec<T> = self.data.iter().map(|&e| abs(e)).collect();
+        let data: Vec<T> = self.data.par_iter().map(|&e| e.abs()).collect();
 
         Self::new(data, self.shape)
     }
 
     fn add_self(&mut self, other: &Self) {
         self.data
-            .iter_mut()
+            .par_iter_mut()
             .zip(&other.data)
-            .for_each(|(a, b)| *a += *b);
+            .for_each(|(a, b)| *a += b);
     }
 
     fn sub_self(&mut self, other: &Self) {
         self.data
-            .iter_mut()
+            .par_iter_mut()
             .zip(&other.data)
-            .for_each(|(a, b)| *a -= *b);
+            .for_each(|(a, b)| *a -= b);
     }
 
     fn mul_self(&mut self, other: &Self) {
         self.data
-            .iter_mut()
+            .par_iter_mut()
             .zip(&other.data)
-            .for_each(|(a, b)| *a *= *b);
+            .for_each(|(a, b)| *a *= b);
     }
 
     fn div_self(&mut self, other: &Self) {
         self.data
-            .iter_mut()
+            .par_iter_mut()
             .zip(&other.data)
-            .for_each(|(a, b)| *a /= *b);
+            .for_each(|(a, b)| *a /= b);
     }
 
     fn abs_self(&mut self) {
-        self.data.iter_mut().for_each(|e| *e = abs(*e))
+        self.data.par_iter_mut().for_each(|e| *e = e.abs());
     }
 
     fn add_val_self(&mut self, val: T) {
-        self.data.iter_mut().for_each(|e| *e += val);
+        self.data.par_iter_mut().for_each(|e| *e += val);
     }
 
     fn sub_val_self(&mut self, val: T) {
-        self.data.iter_mut().for_each(|e| *e -= val);
+        self.data.par_iter_mut().for_each(|e| *e -= val);
     }
 
     fn mul_val_self(&mut self, val: T) {
-        self.data.iter_mut().for_each(|e| *e *= val);
+        self.data.par_iter_mut().for_each(|e| *e *= val);
     }
 
     fn div_val_self(&mut self, val: T) {
-        self.data.iter_mut().for_each(|e| *e /= val);
+        self.data.par_iter_mut().for_each(|e| *e /= val);
     }
 
     fn matmul(&self, other: &Self) -> Self {
         // assert M N x N P
-        if self.ncols != other.nrows {
+        if self.cols() != other.rows() {
             panic!("Oops, dimensions do not match");
         }
 
-        let r1 = self.nrows;
-        let c1 = self.ncols;
-        let c2 = other.ncols;
+        let r1 = self.rows();
+        let c1 = self.cols();
+        let c2 = other.cols();
 
-        let mut data = vec![T::zero(); c2 * r1];
+        let mut data = vec![0 as T; c2 * r1];
 
         let t_other = other.transpose_copy();
 
         for i in 0..r1 {
             for j in 0..c2 {
                 let dot_product = (0..c1)
-                    .into_iter()
-                    .map(|k| self.data[at!(i, k, c1)] * t_other.data[at!(j, k, t_other.ncols)])
+                    .into_par_iter()
+                    .map(|k| self.data[at!(i, k, c1)] * t_other.data[at!(j, k, t_other.cols())])
                     .sum();
 
                 data[at!(i, j, c2)] = dot_product;
@@ -1471,17 +1577,37 @@ where
         Self::new(data, (c2, r1))
     }
 
+    fn determinant(&self) -> T {
+        match self.size() {
+            1 => self.data[0],
+            4 => todo!(),
+            9 => todo!(),
+            _ => {
+                todo!()
+                // let mut det = 0.0;
+                // let mut sign = 1.0;
+                //
+                // for i in 0..3 {
+                //     let minor = get_minor(self, 3, i);
+                //     det += sign * self.data[i] * determinant(&minor);
+                //     sign *= -1.0;
+                // }
+                //
+                // det
+            }
+        }
+    }
+
     fn transpose(&mut self) {
-        for i in 0..self.nrows {
-            for j in (i + 1)..self.ncols {
-                let lhs = at!(i, j, self.ncols);
-                let rhs = at!(j, i, self.nrows);
+        for i in 0..self.rows() {
+            for j in (i + 1)..self.cols() {
+                let lhs = at!(i, j, self.cols());
+                let rhs = at!(j, i, self.rows());
                 self.data.swap(lhs, rhs);
             }
         }
 
         swap(&mut self.shape.0, &mut self.shape.1);
-        swap(&mut self.nrows, &mut self.ncols);
     }
 
     fn t(&mut self) {
@@ -1499,11 +1625,23 @@ where
     }
 }
 
+/// Matrix functions with predicates
 pub trait MatrixPredicates<'a, T>
 where
     T: MatrixElement,
 {
-    fn count_where<F>(&'a self, pred: F) -> usize
+    /// Counts all occurances where predicate holds
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixPredicates};
+    ///
+    /// let matrix = Matrix::init(2.0, (2,4));
+    ///
+    /// assert_eq!(matrix.count_where(|&e| e == 2.0), 8);
+    /// ```
+    fn count_where<F>(&self, pred: F) -> usize
     where
         F: Fn(&T) -> bool;
 
@@ -1587,32 +1725,32 @@ impl<'a, T> MatrixPredicates<'a, T> for Matrix<'a, T>
 where
     T: MatrixElement,
 {
-    fn count_where<F>(&'a self, pred: F) -> usize
+    fn count_where<F>(&self, pred: F) -> usize
     where
         F: Fn(&T) -> bool,
     {
-        self.data.iter().filter(|&e| pred(e)).count()
+        self.data.par_iter().filter(|&e| pred(e)).count()
     }
 
     fn sum_where<F>(&self, pred: F) -> T
     where
         F: Fn(&T) -> bool,
     {
-        self.data.iter().filter(|&e| pred(e)).copied().sum::<T>()
+        self.data.par_iter().filter(|&e| pred(e)).sum()
     }
 
     fn any<F>(&self, pred: F) -> bool
     where
         F: Fn(&T) -> bool,
     {
-        self.data.iter().any(pred)
+        self.data.par_iter().any(pred)
     }
 
     fn all<F>(&self, pred: F) -> bool
     where
         F: Fn(&T) -> bool,
     {
-        self.data.iter().all(pred)
+        self.data.par_iter().all(pred)
     }
 
     fn find<F>(&self, pred: F) -> Option<Shape>
@@ -1632,7 +1770,7 @@ where
     {
         let data: Vec<Shape> = self
             .data
-            .iter()
+            .par_iter()
             .enumerate()
             .filter_map(|(idx, elem)| {
                 if pred(elem) {
@@ -1649,4 +1787,11 @@ where
             Some(data)
         }
     }
+}
+
+/// Helper method to swap to usizes
+fn swap(lhs: &mut usize, rhs: &mut usize) {
+    let temp = *lhs;
+    *lhs = *rhs;
+    *rhs = temp;
 }
