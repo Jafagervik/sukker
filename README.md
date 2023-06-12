@@ -7,6 +7,11 @@
 ![Maintenance](https://img.shields.io/badge/maintenance-experimental-blue.svg)
 
 
+Linear algebra in Rust!
+In version 1.1.0, there is now added support for several datatypes,
+with the tradeof being no rayon added just yet.
+This and more linear algebra functions to be added
+
 ## Examples
 
 
@@ -33,4 +38,5 @@ Full API documentation can be found [here](https://docs.rs/sukker/latest/sukker/
 ## Features 
 - [X] Blazingly fast
 - [X] Common matrix operations exists under matrix module
+- [X] Support for f32, f64, i32, i64 and even i8
 
