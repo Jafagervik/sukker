@@ -621,7 +621,7 @@ where
     /// let matrix = Matrix::init(10.5, (4,4));
     /// let sub_matrix = matrix.get_sub_matrix((1,1), (2,2));
     ///
-    /// assert_eq!(sub_matrix, vec![10.5,10.5,10.5,10.5]);
+    /// assert_eq!(sub_matrix.data, vec![10.5,10.5,10.5,10.5]);
     /// ```
     pub fn get_sub_matrix(&self, start_idx: Shape, size: Shape) -> Self {
         let (start_row, start_col) = start_idx;
@@ -981,11 +981,6 @@ where
     fn sub_val(&self, val: T) -> Self;
     fn mul_val(&self, val: T) -> Self;
     fn div_val(&self, val: T) -> Self;
-    fn log(&self, base: T) -> Self;
-    fn ln(&self) -> Self;
-    fn tanh(&self) -> Self;
-    fn pow(&self, val: usize) -> Self;
-    fn abs(&self) -> Self;
     fn add_self(&mut self, other: &Self);
     fn sub_self(&mut self, other: &Self);
     fn mul_self(&mut self, other: &Self);
@@ -1000,6 +995,14 @@ where
     fn t(&mut self);
     fn transpose_copy(&self) -> Self;
     fn eigenvalue(&self) -> T;
+
+    fn log(&self, base: T) -> Self;
+    fn ln(&self) -> Self;
+    fn tanh(&self) -> Self;
+    fn sinh(&self) -> Self;
+    fn cosh(&self) -> Self;
+    fn pow(&self, val: usize) -> Self;
+    fn abs(&self) -> Self;
 }
 
 impl<'a, T> MatrixLinAlg<'a, T> for Matrix<'a, T>
@@ -1230,7 +1233,7 @@ where
         unimplemented!()
         // let data: Vec<T> = self.data.iter().map(|&e| e.log(base)).collect();
         //
-        // Self::new(data, self.shape)
+        //  Self::new(data, self.shape)
     }
 
     /// Takes the natural logarithm of each element in a matrix
@@ -1264,6 +1267,42 @@ where
     ///
     /// ```
     fn tanh(&self) -> Self {
+        unimplemented!()
+        // let data: Vec<T> = self.data.iter().map(|&e| e.tanh()).collect();
+        //
+        // Self::new(data, self.shape)
+    }
+
+    /// Gets sinh of every value
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    /// use sukker::constants::EF32;
+    ///
+    /// let matrix = Matrix::init(EF32, (2,2));
+    ///
+    /// ```
+    fn sinh(&self) -> Self {
+        unimplemented!()
+        // let data: Vec<T> = self.data.iter().map(|&e| e.tanh()).collect();
+        //
+        // Self::new(data, self.shape)
+    }
+
+    /// Gets cosh of every value
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    /// use sukker::constants::EF32;
+    ///
+    /// let matrix = Matrix::init(EF32, (2,2));
+    ///
+    /// ```
+    fn cosh(&self) -> Self {
         unimplemented!()
         // let data: Vec<T> = self.data.iter().map(|&e| e.tanh()).collect();
         //
