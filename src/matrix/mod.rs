@@ -2,7 +2,7 @@
 //!
 //! For now, only basic operations are allowed, but more are to be added
 //!
-//! Currently supported datatypes are i32, i64, f32 and f64
+//! All signed nueric datatypes are supported
 use std::{
     error::Error,
     fmt::{Debug, Display},
@@ -80,12 +80,13 @@ pub trait MatrixElement:
 {
 }
 
-impl MatrixElement for f32 {}
-impl MatrixElement for f64 {}
 impl MatrixElement for i8 {}
 impl MatrixElement for i16 {}
 impl MatrixElement for i32 {}
 impl MatrixElement for i64 {}
+impl MatrixElement for i128 {}
+impl MatrixElement for f32 {}
+impl MatrixElement for f64 {}
 
 impl<'a, T> FromStr for Matrix<'a, T>
 where
@@ -117,6 +118,36 @@ where
     }
 }
 
+impl<'a, T> Default for Matrix<'a, T>
+where
+    T: MatrixElement,
+    <T as FromStr>::Err: Error + 'static,
+    Vec<T>: IntoParallelIterator,
+    Vec<&'a T>: IntoParallelRefIterator<'a>,
+{
+    /// Represents a default identity matrix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::Matrix;
+    ///
+    /// let matrix: Matrix<f32> = Matrix::default();
+    ///
+    /// assert_eq!(matrix.size(), 9);
+    /// assert_eq!(matrix.shape, (3,3));
+    /// ```
+    fn default() -> Self {
+        Self {
+            data: vec![T::one(); 9],
+            shape: (3, 3),
+            nrows: 3,
+            ncols: 3,
+            _lifetime: PhantomData::default(),
+        }
+    }
+}
+
 /// Printer functions for the matrix
 impl<'a, T> Matrix<'a, T>
 where
@@ -133,10 +164,11 @@ where
     /// use sukker::Matrix;
     ///
     /// let matrix: Matrix<i32> = Matrix::eye(2);
-    /// matrix.print();
+    /// matrix.print(Some(3));
     ///
     /// ```
-    pub fn print(&self) {
+    pub fn print(&self, decimals: Option<usize>) {
+        let decimals = decimals.unwrap_or_else(|| 2);
         print!("[");
 
         // Large matrices
@@ -147,9 +179,9 @@ where
         for i in 0..self.nrows {
             for j in 0..self.ncols {
                 if i == 0 {
-                    print!("{:.2} ", self.get(i, j));
+                    print!("{val:.dec$} ", dec = decimals, val = self.get(i, j));
                 } else {
-                    print!(" {:.2}", self.get(i, j));
+                    print!(" {val:.dec$}", dec = decimals, val = self.get(i, j));
                 }
             }
             // Print ] on same line if youre at the end
@@ -193,28 +225,6 @@ where
             shape,
             nrows: shape.0,
             ncols: shape.1,
-            _lifetime: PhantomData::default(),
-        }
-    }
-
-    /// Represents a default identity matrix
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::Matrix;
-    ///
-    /// let matrix: Matrix<f32> = Matrix::default();
-    ///
-    /// assert_eq!(matrix.size(), 9);
-    /// assert_eq!(matrix.shape, (3,3));
-    /// ```
-    pub fn default() -> Self {
-        Self {
-            data: vec![T::one(); 9],
-            shape: (3, 3),
-            nrows: 3,
-            ncols: 3,
             _lifetime: PhantomData::default(),
         }
     }
@@ -886,6 +896,43 @@ pub trait MatrixLinAlg<'a, T>
 where
     T: MatrixElement,
 {
+    fn add(&self, other: &Self) -> Self;
+    fn sub(&self, other: &Self) -> Self;
+    fn sub_abs(&self, other: &Self) -> Self;
+    fn mul(&self, other: &Self) -> Self;
+    fn div(&self, other: &Self) -> Self;
+    fn add_val(&self, val: T) -> Self;
+    fn sub_val(&self, val: T) -> Self;
+    fn mul_val(&self, val: T) -> Self;
+    fn div_val(&self, val: T) -> Self;
+    fn log(&self, base: T) -> Self;
+    fn ln(&self) -> Self;
+    fn tanh(&self) -> Self;
+    fn pow(&self, val: usize) -> Self;
+    fn abs(&self) -> Self;
+    fn add_self(&mut self, other: &Self);
+    fn sub_self(&mut self, other: &Self);
+    fn mul_self(&mut self, other: &Self);
+    fn div_self(&mut self, other: &Self);
+    fn abs_self(&mut self);
+    fn add_val_self(&mut self, val: T);
+    fn sub_val_self(&mut self, val: T);
+    fn mul_val_self(&mut self, val: T);
+    fn div_val_self(&mut self, val: T);
+    fn matmul(&self, other: &Self) -> Self;
+    fn transpose(&mut self);
+    fn t(&mut self);
+    fn transpose_copy(&self) -> Self;
+    fn eigenvalue(&self) -> T;
+}
+
+impl<'a, T> MatrixLinAlg<'a, T> for Matrix<'a, T>
+where
+    T: MatrixElement,
+    <T as FromStr>::Err: Error + 'static,
+    Vec<T>: IntoParallelIterator,
+    Vec<&'a T>: IntoParallelRefIterator<'a>,
+{
     /// Adds one matrix to another
     ///
     /// # Examples
@@ -898,7 +945,17 @@ where
     ///
     /// assert_eq!(matrix1.add(&matrix2).data[0], 20.0);
     /// ```
-    fn add(&self, other: &Self) -> Self;
+    fn add(&self, other: &Self) -> Self {
+        if self.nrows != other.nrows || self.ncols != other.ncols {
+            panic!("NOOO!");
+        }
+
+        let data = (0..self.nrows)
+            .flat_map(|i| (0..self.ncols).map(move |j| self.get(i, j) + other.get(i, j)))
+            .collect_vec();
+
+        Self::new(data, self.shape)
+    }
 
     /// Subtracts one array from another
     ///
@@ -912,424 +969,6 @@ where
     ///
     /// assert_eq!(matrix1.sub(&matrix2).data[0], 10.0);
     /// ```
-    fn sub(&self, other: &Self) -> Self;
-
-    /// Subtracts one array from another and returns absval
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixLinAlg};
-    ///
-    /// let matrix1 = Matrix::init(10.0f32, (2,2));
-    /// let matrix2 = Matrix::init(15.0f32, (2,2));
-    ///
-    /// assert_eq!(matrix1.sub_abs(&matrix2).data[0], 5.0);
-    /// ```
-    fn sub_abs(&self, other: &Self) -> Self;
-
-    /// Dot product of two matrices
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixLinAlg};
-    ///
-    /// let matrix1 = Matrix::init(20.0, (2,2));
-    /// let matrix2 = Matrix::init(10.0, (2,2));
-    ///
-    /// assert_eq!(matrix1.mul(&matrix2).data[0], 200.0);
-    /// ```
-    fn mul(&self, other: &Self) -> Self;
-
-    /// Bad handling of zero div
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixLinAlg};
-    ///
-    /// let matrix1 = Matrix::init(20.0, (2,2));
-    /// let matrix2 = Matrix::init(10.0, (2,2));
-    ///
-    /// assert_eq!(matrix1.div(&matrix2).data[0], 2.0);
-    /// ```
-    fn div(&self, other: &Self) -> Self;
-
-    /// Adds a value to a matrix and returns a new matrix
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixLinAlg};
-    ///
-    /// let matrix = Matrix::init(20.0, (2,2));
-    /// let value: f32 = 2.0;
-    /// assert_eq!(matrix.add_val(value).data[0], 22.0);
-    /// ```
-    fn add_val(&self, val: T) -> Self;
-
-    /// Substracts a value to a matrix and returns a new matrix
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixLinAlg};
-    ///
-    /// let matrix = Matrix::init(20.0, (2,2));
-    /// let value: f32 = 2.0;
-    /// assert_eq!(matrix.sub_val(value).data[0], 18.0);
-    /// ```
-    fn sub_val(&self, val: T) -> Self;
-
-    /// Multiplies a value to a matrix and returns a new matrix
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixLinAlg};
-    ///
-    /// let matrix = Matrix::init(20.0, (2,2));
-    /// let value: f32 = 2.0;
-    /// assert_eq!(matrix.mul_val(value).data[0], 40.0);
-    /// ```
-    fn mul_val(&self, val: T) -> Self;
-
-    /// Divides a value to a matrix and returns a new matrix
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixLinAlg};
-    ///
-    /// let matrix = Matrix::init(20.0, (2,2));
-    /// let value: f32 = 2.0;
-    ///
-    /// let result_mat = matrix.div_val(value);
-    ///
-    /// assert_eq!(result_mat.data[0], 10.0);
-    /// ```
-    fn div_val(&self, val: T) -> Self;
-
-    /// Takes the logarithm of each element
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixLinAlg};
-    ///
-    /// let matrix = Matrix::init(2.0, (2,2));
-    ///
-    /// ```
-    fn log(&self, base: T) -> Self;
-
-    /// Takes the natural logarithm of each element in a matrix
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixLinAlg};
-    /// use sukker::constants::E64;
-    ///
-    /// let matrix: Matrix<f64> = Matrix::init(E64, (2,2));
-    ///
-    /// // TBI
-    /// ```
-    fn ln(&self) -> Self;
-
-    /// Gets tanh of every value
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixLinAlg};
-    /// use sukker::constants::E32;
-    ///
-    /// let matrix = Matrix::init(E32, (2,2));
-    ///
-    /// ```
-    fn tanh(&self) -> Self;
-
-    /// Pows each value in a matrix by val times
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixLinAlg};
-    ///
-    /// let matrix = Matrix::init(2.0, (2,2));
-    ///
-    /// let result_mat = matrix.pow(2);
-    ///
-    /// assert_eq!(result_mat.data, vec![4.0, 4.0, 4.0, 4.0]);
-    /// ```
-    fn pow(&self, val: usize) -> Self;
-
-    /// Takes the absolute values of the matrix
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixLinAlg};
-    ///
-    /// let matrix = Matrix::init(20.0, (2,2));
-    ///
-    /// let res = matrix.abs();
-    ///
-    /// // assert_eq!(matrix1.get(0,0), 22.0);
-    /// ```
-    fn abs(&self) -> Self;
-
-    /// Adds a matrix in-place to a matrix
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixLinAlg};
-    ///
-    /// let mut matrix1 = Matrix::init(20.0, (2,2));
-    /// let matrix2 = Matrix::init(2.0, (2,2));
-    ///
-    /// matrix1.add_self(&matrix2);
-    ///
-    /// assert_eq!(matrix1.get(0,0), 22.0);
-    /// ```
-    fn add_self(&mut self, other: &Self);
-
-    /// Subtracts a matrix in-place to a matrix
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixLinAlg};
-    ///
-    /// let mut matrix1 = Matrix::init(20.0, (2,2));
-    /// let matrix2 = Matrix::init(2.0, (2,2));
-    ///
-    /// matrix1.sub_self(&matrix2);
-    ///
-    /// assert_eq!(matrix1.get(0,0), 18.0);
-    /// ```
-    fn sub_self(&mut self, other: &Self);
-
-    /// Multiplies a matrix in-place to a matrix
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixLinAlg};
-    ///
-    /// let mut matrix1 = Matrix::init(20.0, (2,2));
-    /// let matrix2 = Matrix::init(2.0, (2,2));
-    ///
-    /// matrix1.mul_self(&matrix2);
-    ///
-    /// assert_eq!(matrix1.get(0,0), 40.0);
-    /// ```
-    fn mul_self(&mut self, other: &Self);
-
-    /// Divides a matrix in-place to a matrix
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixLinAlg};
-    ///
-    /// let mut matrix1 = Matrix::init(20.0, (2,2));
-    /// let matrix2 = Matrix::init(2.0, (2,2));
-    ///
-    /// matrix1.div_self(&matrix2);
-    ///
-    /// assert_eq!(matrix1.get(0,0), 10.0);
-    /// ```
-    fn div_self(&mut self, other: &Self);
-
-    /// Adds a value in-place to a matrix
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixLinAlg};
-    ///
-    /// let mut matrix = Matrix::init(20.0, (2,2));
-    /// let value: f32 = 2.0;
-    ///
-    /// matrix.add_val_self(value);
-    ///
-    /// assert_eq!(matrix.get(0,0), 22.0);
-    /// ```
-
-    /// Abs matrix in-place to a matrix
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixLinAlg};
-    ///
-    /// let mut matrix = Matrix::init(20.0, (2,2));
-    ///
-    /// matrix.abs_self()
-    ///
-    /// // assert_eq!(matrix1.get(0,0), 22.0);
-    /// ```
-    fn abs_self(&mut self);
-
-    /// Adds a value in-place to a matrix
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixLinAlg};
-    ///
-    /// let mut matrix = Matrix::init(20.0, (2,2));
-    /// let value: f32 = 2.0;
-    ///
-    /// matrix.add_val_self(value);
-    ///
-    /// assert_eq!(matrix.get(0,0), 22.0);
-    /// ```
-    fn add_val_self(&mut self, val: T);
-
-    /// Subtracts a value in-place to a matrix
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixLinAlg};
-    ///
-    /// let mut matrix = Matrix::init(20.0, (2,2));
-    /// let value: f32 = 2.0;
-    ///
-    /// matrix.sub_val_self(value);
-    ///
-    /// assert_eq!(matrix.get(0,0), 18.0);
-    /// ```
-    fn sub_val_self(&mut self, val: T);
-
-    /// Mults a value in-place to a matrix
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixLinAlg};
-    ///
-    /// let mut matrix = Matrix::init(20.0, (2,2));
-    /// let value: f32 = 2.0;
-    ///
-    /// matrix.mul_val_self(value);
-    ///
-    /// assert_eq!(matrix.get(0,0), 40.0);
-    /// ```
-    fn mul_val_self(&mut self, val: T);
-
-    /// Divs a value in-place to a matrix
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixLinAlg};
-    ///
-    /// let mut matrix = Matrix::init(20.0, (2,2));
-    /// let value: f32 = 2.0;
-    ///
-    /// matrix.div_val_self(value);
-    ///
-    /// assert_eq!(matrix.get(0,0), 10.0);
-    /// ```
-    fn div_val_self(&mut self, val: T);
-
-    /// Transposed matrix multiplications
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixLinAlg};
-    ///
-    /// let mut matrix1 = Matrix::init(2.0, (2,4));
-    /// let matrix2 = Matrix::init(2.0, (4,2));
-    ///
-    /// let result = matrix1.matmul(&matrix2);
-    ///
-    /// assert_eq!(result.get(0,0), 16.0);
-    /// assert_eq!(result.shape, (2,2));
-    /// ```
-    fn matmul(&self, other: &Self) -> Self;
-
-    /// Transpose a matrix in-place
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixLinAlg};
-    ///
-    /// let mut matrix = Matrix::init(2.0, (2,100));
-    /// matrix.transpose();
-    ///
-    /// assert_eq!(matrix.shape, (100,2));
-    /// ```
-    fn transpose(&mut self);
-
-    /// Shorthand call for transpose
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixLinAlg};
-    ///
-    /// let mut matrix = Matrix::init(2.0, (2,100));
-    /// matrix.t();
-    ///
-    /// assert_eq!(matrix.shape, (100,2));
-    /// ```
-    fn t(&mut self);
-
-    /// Transpose a matrix and return a copy
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixLinAlg};
-    ///
-    /// let matrix = Matrix::init(2.0, (2,100));
-    /// let result = matrix.transpose_copy();
-    ///
-    /// assert_eq!(result.shape, (100,2));
-    /// ```
-    fn transpose_copy(&self) -> Self;
-
-    /// Find the eigenvale of a matrix
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixLinAlg};
-    ///
-    /// let mut matrix = Matrix::init(2.0, (2,100));
-    ///
-    /// assert_eq!(42f32, 42f32);
-    /// ```
-    fn eigenvalue(&self) -> T;
-}
-
-impl<'a, T> MatrixLinAlg<'a, T> for Matrix<'a, T>
-where
-    T: MatrixElement,
-    <T as FromStr>::Err: Error + 'static,
-    Vec<T>: IntoParallelIterator,
-    Vec<&'a T>: IntoParallelRefIterator<'a>,
-{
-    fn add(&self, other: &Self) -> Self {
-        if self.nrows != other.nrows || self.ncols != other.ncols {
-            panic!("NOOO!");
-        }
-
-        let data = (0..self.nrows)
-            .flat_map(|i| (0..self.ncols).map(move |j| self.get(i, j) + other.get(i, j)))
-            .collect_vec();
-
-        Self::new(data, self.shape)
-    }
-
     fn sub(&self, other: &Self) -> Self {
         if self.nrows != other.nrows || self.ncols != other.ncols {
             panic!("NOOO!");
@@ -1342,6 +981,18 @@ where
         Self::new(data, self.shape)
     }
 
+    /// Subtracts one array from another and returns the absolute value
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    ///
+    /// let matrix1 = Matrix::init(10.0f32, (2,2));
+    /// let matrix2 = Matrix::init(15.0f32, (2,2));
+    ///
+    /// assert_eq!(matrix1.sub_abs(&matrix2).data[0], 5.0);
+    /// ```
     fn sub_abs(&self, other: &Self) -> Self {
         if self.nrows != other.nrows || self.ncols != other.ncols {
             panic!("NOOO!");
@@ -1365,6 +1016,18 @@ where
         Self::new(data, self.shape)
     }
 
+    /// Dot product of two matrices
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    ///
+    /// let matrix1 = Matrix::init(20.0, (2,2));
+    /// let matrix2 = Matrix::init(10.0, (2,2));
+    ///
+    /// assert_eq!(matrix1.mul(&matrix2).data[0], 200.0);
+    /// ```
     fn mul(&self, other: &Self) -> Self {
         if self.nrows != other.nrows || self.ncols != other.ncols {
             panic!("NOOO!");
@@ -1377,6 +1040,18 @@ where
         Self::new(data, self.shape)
     }
 
+    /// Bad handling of zero div
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    ///
+    /// let matrix1 = Matrix::init(20.0, (2,2));
+    /// let matrix2 = Matrix::init(10.0, (2,2));
+    ///
+    /// assert_eq!(matrix1.div(&matrix2).data[0], 2.0);
+    /// ```
     fn div(&self, other: &Self) -> Self {
         if self.nrows != other.nrows || self.ncols != other.ncols {
             panic!("NOOO!");
@@ -1394,30 +1069,87 @@ where
         Self::new(data, self.shape)
     }
 
+    /// Adds a value to a matrix and returns a new matrix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    ///
+    /// let matrix = Matrix::init(20.0, (2,2));
+    /// let value: f32 = 2.0;
+    /// assert_eq!(matrix.add_val(value).data[0], 22.0);
+    /// ```
     fn add_val(&self, val: T) -> Self {
         let data: Vec<T> = self.data.par_iter().map(|&e| e + val).collect();
 
         Self::new(data, self.shape)
     }
 
+    /// Substracts a value to a matrix and returns a new matrix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    ///
+    /// let matrix = Matrix::init(20.0, (2,2));
+    /// let value: f32 = 2.0;
+    /// assert_eq!(matrix.sub_val(value).data[0], 18.0);
+    /// ```
     fn sub_val(&self, val: T) -> Self {
         let data: Vec<T> = self.data.par_iter().map(|&e| e - val).collect();
 
         Self::new(data, self.shape)
     }
 
+    /// Multiplies a value to a matrix and returns a new matrix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    ///
+    /// let matrix = Matrix::init(20.0, (2,2));
+    /// let value: f32 = 2.0;
+    /// assert_eq!(matrix.mul_val(value).data[0], 40.0);
+    /// ```
     fn mul_val(&self, val: T) -> Self {
         let data: Vec<T> = self.data.par_iter().map(|&e| e * val).collect();
 
         Self::new(data, self.shape)
     }
 
+    /// Divides a value to a matrix and returns a new matrix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    ///
+    /// let matrix = Matrix::init(20.0, (2,2));
+    /// let value: f32 = 2.0;
+    ///
+    /// let result_mat = matrix.div_val(value);
+    ///
+    /// assert_eq!(result_mat.data[0], 10.0);
+    /// ```
     fn div_val(&self, val: T) -> Self {
         let data: Vec<T> = self.data.par_iter().map(|&e| e / val).collect();
 
         Self::new(data, self.shape)
     }
 
+    /// Takes the logarithm of each element
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    ///
+    /// let matrix = Matrix::init(2.0, (2,2));
+    ///
+    /// ```
     fn log(&self, base: T) -> Self {
         unimplemented!()
         // let data: Vec<T> = self.data.iter().map(|&e| e.log(base)).collect();
@@ -1425,6 +1157,18 @@ where
         // Self::new(data, self.shape)
     }
 
+    /// Takes the natural logarithm of each element in a matrix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    /// use sukker::constants::E64;
+    ///
+    /// let matrix: Matrix<f64> = Matrix::init(E64, (2,2));
+    ///
+    /// // TBI
+    /// ```
     fn ln(&self) -> Self {
         unimplemented!()
         // let data: Vec<T> = self.data.iter().map(|&e| e.ln()).collect();
@@ -1432,6 +1176,17 @@ where
         // Self::new(data, self.shape)
     }
 
+    /// Gets tanh of every value
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    /// use sukker::constants::E32;
+    ///
+    /// let matrix = Matrix::init(E32, (2,2));
+    ///
+    /// ```
     fn tanh(&self) -> Self {
         unimplemented!()
         // let data: Vec<T> = self.data.iter().map(|&e| e.tanh()).collect();
@@ -1439,18 +1194,58 @@ where
         // Self::new(data, self.shape)
     }
 
+    /// Pows each value in a matrix by val times
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    ///
+    /// let matrix = Matrix::init(2.0, (2,2));
+    ///
+    /// let result_mat = matrix.pow(2);
+    ///
+    /// assert_eq!(result_mat.data, vec![4.0, 4.0, 4.0, 4.0]);
+    /// ```
     fn pow(&self, val: usize) -> Self {
         let data: Vec<T> = self.data.par_iter().map(|&e| pow(e, val)).collect();
 
         Self::new(data, self.shape)
     }
 
+    /// Takes the absolute values of the matrix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    ///
+    /// let matrix = Matrix::init(20.0, (2,2));
+    ///
+    /// let res = matrix.abs();
+    ///
+    /// // assert_eq!(matrix1.get(0,0), 22.0);
+    /// ```
     fn abs(&self) -> Self {
         let data: Vec<T> = self.data.par_iter().map(|&e| abs(e)).collect();
 
         Self::new(data, self.shape)
     }
 
+    /// Adds a matrix in-place to a matrix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    ///
+    /// let mut matrix1 = Matrix::init(20.0, (2,2));
+    /// let matrix2 = Matrix::init(2.0, (2,2));
+    ///
+    /// matrix1.add_self(&matrix2);
+    ///
+    /// assert_eq!(matrix1.get(0,0), 22.0);
+    /// ```
     fn add_self(&mut self, other: &Self) {
         self.data
             .par_iter_mut()
@@ -1458,6 +1253,20 @@ where
             .for_each(|(a, b)| *a += *b);
     }
 
+    /// Subtracts a matrix in-place to a matrix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    ///
+    /// let mut matrix1 = Matrix::init(20.0, (2,2));
+    /// let matrix2 = Matrix::init(2.0, (2,2));
+    ///
+    /// matrix1.sub_self(&matrix2);
+    ///
+    /// assert_eq!(matrix1.get(0,0), 18.0);
+    /// ```
     fn sub_self(&mut self, other: &Self) {
         self.data
             .par_iter_mut()
@@ -1465,6 +1274,20 @@ where
             .for_each(|(a, b)| *a -= *b);
     }
 
+    /// Multiplies a matrix in-place to a matrix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    ///
+    /// let mut matrix1 = Matrix::init(20.0, (2,2));
+    /// let matrix2 = Matrix::init(2.0, (2,2));
+    ///
+    /// matrix1.mul_self(&matrix2);
+    ///
+    /// assert_eq!(matrix1.get(0,0), 40.0);
+    /// ```
     fn mul_self(&mut self, other: &Self) {
         self.data
             .par_iter_mut()
@@ -1472,6 +1295,20 @@ where
             .for_each(|(a, b)| *a *= *b);
     }
 
+    /// Divides a matrix in-place to a matrix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    ///
+    /// let mut matrix1 = Matrix::init(20.0, (2,2));
+    /// let matrix2 = Matrix::init(2.0, (2,2));
+    ///
+    /// matrix1.div_self(&matrix2);
+    ///
+    /// assert_eq!(matrix1.get(0,0), 10.0);
+    /// ```
     fn div_self(&mut self, other: &Self) {
         self.data
             .par_iter_mut()
@@ -1479,26 +1316,110 @@ where
             .for_each(|(a, b)| *a /= *b);
     }
 
+    /// Abs matrix in-place to a matrix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    ///
+    /// let mut matrix = Matrix::init(20.0, (2,2));
+    ///
+    /// matrix.abs_self()
+    ///
+    /// // assert_eq!(matrix1.get(0,0), 22.0);
+    /// ```
     fn abs_self(&mut self) {
         self.data.par_iter_mut().for_each(|e| *e = abs(*e))
     }
 
+    /// Adds a value in-place to a matrix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    ///
+    /// let mut matrix = Matrix::init(20.0, (2,2));
+    /// let value: f32 = 2.0;
+    ///
+    /// matrix.add_val_self(value);
+    ///
+    /// assert_eq!(matrix.get(0,0), 22.0);
+    /// ```
     fn add_val_self(&mut self, val: T) {
         self.data.par_iter_mut().for_each(|e| *e += val);
     }
 
+    /// Subtracts a value in-place to a matrix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    ///
+    /// let mut matrix = Matrix::init(20.0, (2,2));
+    /// let value: f32 = 2.0;
+    ///
+    /// matrix.sub_val_self(value);
+    ///
+    /// assert_eq!(matrix.get(0,0), 18.0);
+    /// ```
     fn sub_val_self(&mut self, val: T) {
         self.data.par_iter_mut().for_each(|e| *e -= val);
     }
 
+    /// Mults a value in-place to a matrix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    ///
+    /// let mut matrix = Matrix::init(20.0, (2,2));
+    /// let value: f32 = 2.0;
+    ///
+    /// matrix.mul_val_self(value);
+    ///
+    /// assert_eq!(matrix.get(0,0), 40.0);
+    /// ```
     fn mul_val_self(&mut self, val: T) {
         self.data.par_iter_mut().for_each(|e| *e *= val);
     }
 
+    /// Divs a value in-place to a matrix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    ///
+    /// let mut matrix = Matrix::init(20.0, (2,2));
+    /// let value: f32 = 2.0;
+    ///
+    /// matrix.div_val_self(value);
+    ///
+    /// assert_eq!(matrix.get(0,0), 10.0);
+    /// ```
     fn div_val_self(&mut self, val: T) {
         self.data.par_iter_mut().for_each(|e| *e /= val);
     }
 
+    /// Transposed matrix multiplications
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    ///
+    /// let mut matrix1 = Matrix::init(2.0, (2,4));
+    /// let matrix2 = Matrix::init(2.0, (4,2));
+    ///
+    /// let result = matrix1.matmul(&matrix2);
+    ///
+    /// assert_eq!(result.get(0,0), 16.0);
+    /// assert_eq!(result.shape, (2,2));
+    /// ```
     fn matmul(&self, other: &Self) -> Self {
         // assert M N x N P
         if self.ncols != other.nrows {
@@ -1525,6 +1446,18 @@ where
         Self::new(data, (c2, r1))
     }
 
+    /// Transpose a matrix in-place
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    ///
+    /// let mut matrix = Matrix::init(2.0, (2,100));
+    /// matrix.transpose();
+    ///
+    /// assert_eq!(matrix.shape, (100,2));
+    /// ```
     fn transpose(&mut self) {
         for i in 0..self.nrows {
             for j in (i + 1)..self.ncols {
@@ -1538,120 +1471,94 @@ where
         swap(&mut self.nrows, &mut self.ncols);
     }
 
+    /// Shorthand call for transpose
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    ///
+    /// let mut matrix = Matrix::init(2.0, (2,100));
+    /// matrix.t();
+    ///
+    /// assert_eq!(matrix.shape, (100,2));
+    /// ```
     fn t(&mut self) {
         self.transpose()
     }
 
+    /// Transpose a matrix and return a copy
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    ///
+    /// let matrix = Matrix::init(2.0, (2,100));
+    /// let result = matrix.transpose_copy();
+    ///
+    /// assert_eq!(result.shape, (100,2));
+    /// ```
     fn transpose_copy(&self) -> Self {
         let mut res = self.clone();
         res.transpose();
         res
     }
 
+    /// Find the eigenvale of a matrix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixLinAlg};
+    ///
+    /// let mut matrix = Matrix::init(2.0, (2,100));
+    ///
+    /// assert_eq!(42f32, 42f32);
+    /// ```
     fn eigenvalue(&self) -> T {
         todo!()
     }
 }
 
-pub trait MatrixPredicates<'a, T>
-where
-    T: MatrixElement,
-{
-    fn count_where<F>(&'a self, pred: F) -> usize
-    where
-        F: Fn(&T) -> bool + Sync;
-
-    /// Sums all occurances where predicate holds
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixPredicates};
-    ///
-    /// let matrix = Matrix::init(2.0, (2,4));
-    ///
-    /// assert_eq!(matrix.sum_where(|&e| e == 2.0), 16.0);
-    /// ```
-    fn sum_where<F>(&self, pred: F) -> T
-    where
-        F: Fn(&T) -> bool + Sync;
-
-    /// Return whether or not a predicate holds at least once
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixPredicates};
-    ///
-    /// let matrix = Matrix::init(2.0, (2,4));
-    ///
-    /// assert_eq!(matrix.any(|&e| e == 2.0), true);
-    /// ```
-    fn any<F>(&self, pred: F) -> bool
-    where
-        F: Fn(&T) -> bool + Sync + Send;
-
-    /// Returns whether or not predicate holds for all values
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixPredicates};
-    ///
-    /// let matrix = Matrix::randomize_range(1.0, 4.0, (2,4));
-    ///
-    /// assert_eq!(matrix.all(|&e| e >= 1.0), true);
-    /// ```
-    fn all<F>(&self, pred: F) -> bool
-    where
-        F: Fn(&T) -> bool + Sync + Send;
-
-    /// Finds first index where predicates holds if possible
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixPredicates};
-    ///
-    /// let matrix = Matrix::init(2f32, (2,4));
-    ///
-    /// assert_eq!(matrix.find(|&e| e >= 1f32), Some((0,0)));
-    /// ```
-    fn find<F>(&self, pred: F) -> Option<Shape>
-    where
-        F: Fn(&T) -> bool + Sync;
-
-    /// Finds all indeces where predicates holds if possible
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, MatrixPredicates};
-    ///
-    /// let matrix = Matrix::init(2.0, (2,4));
-    ///
-    /// assert_eq!(matrix.find_all(|&e| e >= 3.0), None);
-    /// ```
-    fn find_all<F>(&self, pred: F) -> Option<Vec<Shape>>
-    where
-        F: Fn(&T) -> bool + Sync;
-}
-
-impl<'a, T> MatrixPredicates<'a, T> for Matrix<'a, T>
+/// Implementations for predicates
+impl<'a, T> Matrix<'a, T>
 where
     T: MatrixElement,
     <T as FromStr>::Err: Error + 'static,
     Vec<T>: IntoParallelIterator,
     Vec<&'a T>: IntoParallelRefIterator<'a>,
 {
-    fn count_where<F>(&'a self, pred: F) -> usize
+    /// Counts all occurances where predicate holds
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::Matrix;
+    ///
+    /// let matrix = Matrix::init(2.0f32, (2,4));
+    ///
+    /// assert_eq!(matrix.count_where(|&e| e == 2.0), 8);
+    /// ```
+    pub fn count_where<F>(&'a self, pred: F) -> usize
     where
         F: Fn(&T) -> bool + Sync,
     {
         self.data.par_iter().filter(|&e| pred(e)).count()
     }
 
-    fn sum_where<F>(&self, pred: F) -> T
+    /// Sums all occurances where predicate holds
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::Matrix;
+    ///
+    /// let matrix = Matrix::init(2.0, (2,4));
+    ///
+    /// assert_eq!(matrix.sum_where(|&e| e == 2.0), 16.0);
+    /// ```
+    pub fn sum_where<F>(&self, pred: F) -> T
     where
         F: Fn(&T) -> bool + Sync,
     {
@@ -1662,21 +1569,54 @@ where
             .sum::<T>()
     }
 
-    fn any<F>(&self, pred: F) -> bool
+    /// Return whether or not a predicate holds at least once
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::Matrix;
+    ///
+    /// let matrix = Matrix::init(2.0, (2,4));
+    ///
+    /// assert_eq!(matrix.any(|&e| e == 2.0), true);
+    /// ```
+    pub fn any<F>(&self, pred: F) -> bool
     where
         F: Fn(&T) -> bool + Sync + Send,
     {
         self.data.par_iter().any(pred)
     }
 
-    fn all<F>(&self, pred: F) -> bool
+    /// Returns whether or not predicate holds for all values
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::Matrix;
+    ///
+    /// let matrix = Matrix::randomize_range(1.0, 4.0, (2,4));
+    ///
+    /// assert_eq!(matrix.all(|&e| e >= 1.0), true);
+    /// ```
+    pub fn all<F>(&self, pred: F) -> bool
     where
         F: Fn(&T) -> bool + Sync + Send,
     {
         self.data.par_iter().all(pred)
     }
 
-    fn find<F>(&self, pred: F) -> Option<Shape>
+    /// Finds first index where predicates holds if possible
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::Matrix;
+    ///
+    /// let matrix = Matrix::init(2f32, (2,4));
+    ///
+    /// assert_eq!(matrix.find(|&e| e >= 1f32), Some((0,0)));
+    /// ```
+    pub fn find<F>(&self, pred: F) -> Option<Shape>
     where
         F: Fn(&T) -> bool + Sync,
     {
@@ -1687,7 +1627,18 @@ where
         None
     }
 
-    fn find_all<F>(&self, pred: F) -> Option<Vec<Shape>>
+    /// Finds all indeces where predicates holds if possible
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::Matrix;
+    ///
+    /// let matrix = Matrix::init(2.0, (2,4));
+    ///
+    /// assert_eq!(matrix.find_all(|&e| e >= 3.0), None);
+    /// ```
+    pub fn find_all<F>(&self, pred: F) -> Option<Vec<Shape>>
     where
         F: Fn(&T) -> bool + Sync,
     {

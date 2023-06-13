@@ -1,4 +1,4 @@
-use sukker::{Matrix, MatrixLinAlg, MatrixPredicates};
+use sukker::{Matrix, MatrixLinAlg};
 
 #[test]
 fn basic() {
@@ -19,4 +19,15 @@ fn basic() {
     assert_eq!(x.shape, (2, 2));
 
     assert!(x.any(|&e| e >= 0.0));
+}
+
+#[test]
+fn new() {
+    let a = Matrix::<f32>::randomize((7, 56));
+    let b = Matrix::<f32>::randomize((56, 8));
+
+    let c = a.matmul(&b);
+
+    // To print this beautiful matrix:
+    c.print(Some(7));
 }
