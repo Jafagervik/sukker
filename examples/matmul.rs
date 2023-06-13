@@ -6,7 +6,7 @@ fn main() {
 
     let c = a.matmul(&b);
 
-    c.print(None);
+    c.print(2);
 
     assert!(c.size() == 9);
 }

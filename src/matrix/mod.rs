@@ -2,7 +2,8 @@
 //!
 //! For now, only basic operations are allowed, but more are to be added
 //!
-//! All signed nueric datatypes are supported
+//! This file is sub 1500 lines and acts as the core file
+use serde::{Deserialize, Serialize};
 use std::{
     error::Error,
     fmt::{Debug, Display},
@@ -22,7 +23,8 @@ use rand::{distributions::uniform::SampleUniform, Rng};
 use rayon::prelude::*;
 use std::iter::{Product, Sum};
 
-/// Type definitions
+/// Shape represents the dimension size
+/// of the matrix as a tuple of usize
 pub type Shape = (usize, usize);
 
 /// Helper method to swap to usizes
@@ -32,14 +34,14 @@ fn swap(lhs: &mut usize, rhs: &mut usize) {
     *rhs = temp;
 }
 
-/// calculates index for matrix
+/// Calculates 1D index from row and col
 macro_rules! at {
-    ($i:ident, $j:ident, $cols:expr) => {
-        $i * $cols + $j
+    ($row:ident, $col:ident, $ncols:expr) => {
+        $row * $ncols + $col
     };
 }
 
-#[derive(Clone, PartialEq, PartialOrd)]
+#[derive(Clone, PartialEq, PartialOrd, Debug, Serialize, Deserialize)]
 pub struct Matrix<'a, T>
 where
     T: MatrixElement,
@@ -47,14 +49,17 @@ where
     Vec<T>: IntoParallelIterator,
     Vec<&'a T>: IntoParallelRefIterator<'a>,
 {
+    /// Vector containing all data
     pub data: Vec<T>,
-    pub shape: (usize, usize),
+    /// Shape of the matrix
+    pub shape: Shape,
+    /// Number of rows
     pub nrows: usize,
+    /// Number of columns
     pub ncols: usize,
     _lifetime: PhantomData<&'a T>,
 }
 
-/// Traits needed for matrix element
 pub trait MatrixElement:
     Copy
     + Clone
@@ -71,12 +76,31 @@ pub trait MatrixElement:
     + Zero
     + Send
     + Sync
+    + Sized
     + Num
     + NumOps
     + NumAssignOps
     + NumAssignRef
     + NumAssign
     + SampleUniform
+{
+}
+
+unsafe impl<'a, T> Send for Matrix<'a, T>
+where
+    T: MatrixElement,
+    <T as FromStr>::Err: Error + 'static,
+    Vec<T>: IntoParallelIterator,
+    Vec<&'a T>: IntoParallelRefIterator<'a>,
+{
+}
+
+unsafe impl<'a, T> Sync for Matrix<'a, T>
+where
+    T: MatrixElement,
+    <T as FromStr>::Err: Error + 'static,
+    Vec<T>: IntoParallelIterator,
+    Vec<&'a T>: IntoParallelRefIterator<'a>,
 {
 }
 
@@ -118,6 +142,39 @@ where
     }
 }
 
+impl<'a, T> Display for Matrix<'a, T>
+where
+    T: MatrixElement,
+    <T as FromStr>::Err: Error + 'static,
+    Vec<T>: IntoParallelIterator,
+    Vec<&'a T>: IntoParallelRefIterator<'a>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[");
+
+        // Large matrices
+        if self.nrows > 10 || self.ncols > 10 {
+            write!(f, "...");
+        }
+
+        for i in 0..self.nrows {
+            for j in 0..self.ncols {
+                if i == 0 {
+                    write!(f, "{:.4} ", self.get(i, j));
+                } else {
+                    write!(f, " {:.4}", self.get(i, j));
+                }
+            }
+            // Print ] on same line if youre at the end
+            if i == self.shape.0 - 1 {
+                break;
+            }
+            write!(f, "\n");
+        }
+        writeln!(f, "], dtype={}", std::any::type_name::<T>())
+    }
+}
+
 impl<'a, T> Default for Matrix<'a, T>
 where
     T: MatrixElement,
@@ -156,7 +213,7 @@ where
     Vec<T>: IntoParallelIterator,
     Vec<&'a T>: IntoParallelRefIterator<'a>,
 {
-    /// Prints out the matrix based on shape. Also outputs datatype
+    /// Prints out the matrix with however many decimals you want
     ///
     /// # Examples
     ///
@@ -164,11 +221,10 @@ where
     /// use sukker::Matrix;
     ///
     /// let matrix: Matrix<i32> = Matrix::eye(2);
-    /// matrix.print(Some(3));
+    /// matrix.print(4);
     ///
     /// ```
-    pub fn print(&self, decimals: Option<usize>) {
-        let decimals = decimals.unwrap_or_else(|| 2);
+    pub fn print(&self, decimals: usize) {
         print!("[");
 
         // Large matrices
@@ -429,7 +485,7 @@ where
     /// assert_eq!(matrix.shape, (2,3));
     /// ```
     pub fn randomize(shape: Shape) -> Self {
-        Self::randomize_range(T::zero(), T::zero(), shape)
+        Self::randomize_range(T::zero(), T::one(), shape)
     }
 
     /// Parses from file, but will return a default matrix if nothing is given
@@ -534,7 +590,7 @@ where
         self.data[at!(i, j, self.ncols)]
     }
 
-    ///  Gets a vec slice
+    ///  Gets a piece of the matrix out as a vector
     ///
     /// # Examples
     ///
@@ -542,20 +598,40 @@ where
     /// use sukker::Matrix;
     ///
     /// let matrix = Matrix::init(10.5, (4,4));
-    /// let slice = matrix.get_vec_slice(1,1, 2,2);
+    /// let slice = matrix.get_vec_slice((1,1), (2,2));
     ///
     /// assert_eq!(slice, vec![10.5,10.5,10.5,10.5]);
     /// ```
-    pub fn get_vec_slice(
-        &self,
-        start_row: usize,
-        start_col: usize,
-        dy: usize,
-        dx: usize,
-    ) -> Vec<T> {
+    pub fn get_vec_slice(&self, start_idx: Shape, size: Shape) -> Vec<T> {
+        let (start_row, start_col) = start_idx;
+        let (dx, dy) = size;
+
         iproduct!(start_row..start_row + dy, start_col..start_col + dx)
             .map(|(i, j)| self.get(i, j))
             .collect()
+    }
+
+    ///  Gets a piece of the matrix out as a matrix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::Matrix;
+    ///
+    /// let matrix = Matrix::init(10.5, (4,4));
+    /// let sub_matrix = matrix.get_sub_matrix((1,1), (2,2));
+    ///
+    /// assert_eq!(sub_matrix, vec![10.5,10.5,10.5,10.5]);
+    /// ```
+    pub fn get_sub_matrix(&self, start_idx: Shape, size: Shape) -> Self {
+        let (start_row, start_col) = start_idx;
+        let (dx, dy) = size;
+
+        let data = iproduct!(start_row..start_row + dy, start_col..start_col + dx)
+            .map(|(i, j)| self.get(i, j))
+            .collect();
+
+        Self::new(data, size)
     }
 
     ///  Sets element based on is and js
@@ -1163,9 +1239,9 @@ where
     ///
     /// ```
     /// use sukker::{Matrix, MatrixLinAlg};
-    /// use sukker::constants::E64;
+    /// use sukker::constants::EF64;
     ///
-    /// let matrix: Matrix<f64> = Matrix::init(E64, (2,2));
+    /// let matrix: Matrix<f64> = Matrix::init(EF64, (2,2));
     ///
     /// // TBI
     /// ```
@@ -1182,9 +1258,9 @@ where
     ///
     /// ```
     /// use sukker::{Matrix, MatrixLinAlg};
-    /// use sukker::constants::E32;
+    /// use sukker::constants::EF32;
     ///
-    /// let matrix = Matrix::init(E32, (2,2));
+    /// let matrix = Matrix::init(EF32, (2,2));
     ///
     /// ```
     fn tanh(&self) -> Self {

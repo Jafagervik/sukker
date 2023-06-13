@@ -36,7 +36,10 @@ More examples can be found [here](/examples/)
 Full API documentation can be found [here](https://docs.rs/sukker/latest/sukker/).
 
 ## Features 
+- [X] Easy to use!
 - [X] Blazingly fast
-- [X] Common matrix operations exists under matrix module
-- [X] Support for f32, f64, i32, i64 and even i8
+- [X] Common matrix operations exists under MatrixLinAlg trait or just Matrix sturct
+- [X] Serde support 
+- [X] Support for all signed numeric datatypes 
+- [X] Can be sent over threads
 

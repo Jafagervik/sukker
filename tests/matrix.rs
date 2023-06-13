@@ -1,3 +1,4 @@
+use sukker::constants;
 use sukker::{Matrix, MatrixLinAlg};
 
 #[test]
@@ -29,5 +30,5 @@ fn new() {
     let c = a.matmul(&b);
 
     // To print this beautiful matrix:
-    c.print(Some(7));
+    c.print(7);
 }

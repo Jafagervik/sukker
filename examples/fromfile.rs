@@ -5,5 +5,5 @@ fn main() {
 
     let a: Matrix<f32> = Matrix::from_file(path);
 
-    a.print(Some(3));
+    a.print(3);
 }

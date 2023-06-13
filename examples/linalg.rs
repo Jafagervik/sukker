@@ -6,7 +6,11 @@ fn main() {
 
     let c = a.matmul(&b);
 
-    c.print(Some(4));
+    println!("{}", c);
+    println!("{:?}", c);
+
+    // Print with however many decimals you want
+    c.print(4);
 
     assert!(c.size() == 9);
 }

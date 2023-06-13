@@ -9,5 +9,5 @@ fn main() {
 
     let d = c.add_val(42f32);
 
-    d.print(Some(5));
+    d.print(5);
 }
