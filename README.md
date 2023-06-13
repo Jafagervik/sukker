@@ -16,7 +16,7 @@ while still giving you as the user the performance you deserve
 
 
 ```rust 
-use sukker::Matrix;
+use sukker::{Matrix, MatrixLinAlg};
 
 fn main() {
     let a = Matrix::<f32>::randomize((7,56));
@@ -25,7 +25,7 @@ fn main() {
     let c = a.matmul(&b);
 
     // To print this beautiful matrix:
-    c.print();
+    c.print(Some(5));
 }
 ```
 

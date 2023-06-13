@@ -1,4 +1,4 @@
-use sukker::{Matrix, MatrixLinAlg, MatrixPredicates};
+use sukker::{Matrix, MatrixLinAlg};
 
 fn main() {
     let a = Matrix::randomize_range(1f32, 100f32, (3, 1024));
