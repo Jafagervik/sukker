@@ -25,7 +25,7 @@ fn main() {
     let c = a.matmul(&b);
 
     // To print this beautiful matrix:
-    c.print(Some(5));
+    c.print(5);
 }
 ```
 
