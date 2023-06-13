@@ -3,7 +3,7 @@
 /// Infinity
 pub const INF: f32 = f32::INFINITY;
 
-/// Not A Number
+/// Not A Number as f32
 pub const NANF32: f32 = f32::NAN;
 
 /// Euler constant as f32
@@ -47,3 +47,15 @@ pub const MAXI64: i64 = i64::MAX;
 
 /// Min value an i64 can be
 pub const MINI64: i64 = i64::MIN;
+
+/// Max value an i8 can be
+pub const MAXI8: i8 = i8::MAX;
+
+/// Min value an i8 can be
+pub const MINI8: i8 = i8::MIN;
+
+/// Max value an i128 can be
+pub const MAXI128: i128 = i128::MAX;
+
+/// Min value an i8 can be
+pub const MINI128: i128 = i128::MIN;
