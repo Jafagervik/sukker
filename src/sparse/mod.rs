@@ -839,7 +839,56 @@ where
     /// Else, we use this:
     /// link..
     ///
-    fn matmul_sparse(&self, other: &Self) -> Result<Self, MatrixError> {
+    /// In this example we have these two matrices:
+    ///
+    /// A:
+    ///
+    /// 0.0 2.0 0.0
+    /// 4.0 6.0 0.0
+    /// 0.0 0.0 8.0
+    ///
+    /// B:
+    ///
+    /// 2.0 2.0 0.0
+    /// 4.0 6.0 0.0
+    /// 8.0 0.0 0.0
+    ///
+    /// 8.0  12.0 0
+    /// 32.0 44.0 0
+    /// 64.0  0.0 0
+    ///
+    /// Examples
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    /// use sukker::{SparseMatrix, SparseMatrixData};
+    ///
+    /// let mut indexes: SparseMatrixData<f64> = HashMap::new();
+    ///
+    /// indexes.insert((0, 0), 2.0);
+    /// indexes.insert((0, 1), 2.0);
+    /// indexes.insert((1, 0), 2.0);
+    /// indexes.insert((1, 1), 2.0);
+    ///
+    /// let sparse = SparseMatrix::<f64>::init(indexes, (2, 2));
+    ///
+    /// let mut indexes2: SparseMatrixData<f64> = HashMap::new();
+    ///
+    /// indexes2.insert((0, 0), 2.0);
+    /// indexes2.insert((0, 1), 2.0);
+    /// indexes2.insert((1, 0), 2.0);
+    /// indexes2.insert((1, 1), 2.0);
+    ///
+    /// let sparse2 = SparseMatrix::<f64>::init(indexes2, (2, 2));
+    ///
+    /// let res = sparse.matmul_sparse(&sparse2).unwrap();
+    ///
+    /// assert_eq!(res.at(0, 0), 8.0);
+    /// assert_eq!(res.at(0, 1), 8.0);
+    /// assert_eq!(res.at(1, 0), 8.0);
+    /// assert_eq!(res.at(1, 1), 8.0);
+    /// ```
+    pub fn matmul_sparse(&self, other: &Self) -> Result<Self, MatrixError> {
         if self.ncols != other.nrows {
             return Err(MatrixError::MatrixMultiplicationDimensionMismatchError.into());
         }

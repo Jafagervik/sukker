@@ -1,10 +1,10 @@
 //! Internal helpers
 
-use std::{error::Error, str::FromStr};
+use std::{collections::HashMap, error::Error, str::FromStr};
 
-use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator};
+use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
-use crate::{MatrixElement, MatrixError, SparseMatrix};
+use crate::{MatrixElement, MatrixError, SparseMatrix, SparseMatrixData};
 
 // Enum for operations
 pub enum Operation {
@@ -111,12 +111,46 @@ where
     // =============================================================
 
     // For nn x nn
+    #[doc(hidden)]
     pub fn matmul_sparse_nn(&self, other: &Self) -> Self {
-        Self::default()
+        self.matmul_sparse_mnnp(other)
     }
 
     // mn x np
+    #[doc(hidden)]
     pub fn matmul_sparse_mnnp(&self, other: &Self) -> Self {
-        Self::default()
+        let x = self.nrows;
+        let y = self.ncols;
+        let z = other.ncols;
+
+        println!("{}", self);
+        println!("{}", other);
+
+        let mut data: SparseMatrixData<T> = HashMap::new();
+
+        for i in 0..x {
+            for j in 0..y {
+                // We notice that most times, we wont calculate the new sparse matrix
+                // so therefore we do an early continue if this is the case
+                if self.at(i, j) == T::zero() {
+                    continue;
+                }
+
+                let result = (0..z)
+                    .into_par_iter()
+                    .map(|k| self.at(i, j) * other.at(j, k))
+                    .sum();
+
+                println!("i: {}, j: {}, val: {}", i, j, result);
+
+                data.insert((i, j), result);
+            }
+        }
+
+        let a = Self::init(data, (x, z));
+
+        println!("{}", a);
+
+        a
     }
 }

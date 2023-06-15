@@ -45,3 +45,38 @@ fn sparse_medium() {
     assert_eq!(res.at(3, 3), 8.0);
     assert_eq!(res.at(2, 2), 0f64);
 }
+
+#[test]
+fn matmul_sparse() {
+    let mut indexes: SparseMatrixData<f64> = HashMap::new();
+
+    indexes.insert((0, 1), 2.0);
+    indexes.insert((1, 0), 4.0);
+    indexes.insert((1, 1), 6.0);
+    indexes.insert((2, 2), 8.0);
+
+    let sparse = SparseMatrix::<f64>::init(indexes, (3, 3));
+
+    let mut indexes2: SparseMatrixData<f64> = HashMap::new();
+
+    indexes2.insert((0, 0), 2.0);
+    indexes2.insert((1, 0), 4.0);
+    indexes2.insert((1, 1), 8.0);
+    indexes2.insert((2, 1), 6.0);
+
+    let sparse2 = SparseMatrix::<f64>::init(indexes2, (3, 3));
+
+    let res = sparse.matmul_sparse(&sparse2).unwrap();
+
+    assert_eq!(res.at(0, 0), 0.0);
+    assert_eq!(res.at(0, 1), 24.0);
+    assert_eq!(res.at(0, 2), 0.0);
+
+    assert_eq!(res.at(1, 0), 8.0);
+    assert_eq!(res.at(1, 1), 72.0);
+    assert_eq!(res.at(1, 2), 0.0);
+
+    assert_eq!(res.at(2, 0), 0.0);
+    assert_eq!(res.at(2, 1), 0.0);
+    assert_eq!(res.at(2, 2), 48.0);
+}
