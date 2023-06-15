@@ -3,6 +3,11 @@
 //! For now, only basic operations are allowed, but more are to be added
 //!
 //! This file is sub 1500 lines and acts as the core file
+
+mod error;
+
+pub use error::*;
+
 use serde::{Deserialize, Serialize};
 use std::{
     error::Error,
@@ -50,7 +55,7 @@ where
     Vec<&'a T>: IntoParallelRefIterator<'a>,
 {
     /// Vector containing all data
-    pub data: Vec<T>,
+    data: Vec<T>,
     /// Shape of the matrix
     pub shape: Shape,
     /// Number of rows
@@ -83,6 +88,15 @@ pub trait MatrixElement:
     + NumAssignRef
     + NumAssign
     + SampleUniform
+{
+}
+
+impl<'a, T> Error for Matrix<'a, T>
+where
+    T: MatrixElement,
+    <T as FromStr>::Err: Error + 'static,
+    Vec<T>: IntoParallelIterator,
+    Vec<&'a T>: IntoParallelRefIterator<'a>,
 {
 }
 
@@ -266,23 +280,23 @@ where
     /// ```
     /// use sukker::Matrix;
     ///
-    /// let matrix = Matrix::new(vec![1.0,2.0,3.0,4.0], (2,2));
+    /// let matrix = Matrix::new(vec![1.0,2.0,3.0,4.0], (2,2)).unwrap();
     ///
     /// assert_eq!(matrix.size(), 4);
     /// assert_eq!(matrix.shape, (2,2));
     /// ```
-    pub fn new(data: Vec<T>, shape: Shape) -> Self {
+    pub fn new(data: Vec<T>, shape: Shape) -> Result<Self, MatrixError> {
         if shape.0 * shape.1 != data.len() {
-            return Self::default();
+            return Err(MatrixError::MatrixCreationError.into());
         }
 
-        Self {
+        Ok(Self {
             data,
             shape,
             nrows: shape.0,
             ncols: shape.1,
             _lifetime: PhantomData::default(),
-        }
+        })
     }
 
     /// Initializes a matrix with the same value
@@ -320,7 +334,8 @@ where
 
         (0..size).for_each(|i| data[i * size + i] = T::one());
 
-        Self::new(data, (size, size))
+        // Safe to do since the library is setting the size
+        Self::new(data, (size, size)).unwrap()
     }
 
     /// Identity is same as eye, just for nerds
@@ -347,16 +362,16 @@ where
     /// use sukker::Matrix;
     ///
     /// let s = vec![1f32, 2f32, 3f32, 4f32];
-    /// let matrix = Matrix::from_slice(&s, (4,1));
+    /// let matrix = Matrix::from_slice(&s, (4,1)).unwrap_or_else(|| Matrix::default());
     ///
     /// assert_eq!(matrix.unwrap().shape, (4,1));
     /// ```
-    pub fn from_slice(arr: &[T], shape: Shape) -> Option<Self> {
+    pub fn from_slice(arr: &[T], shape: Shape) -> Result<Self, MatrixError> {
         if shape.0 * shape.1 != arr.len() {
-            return None;
+            return Err(MatrixError::MatrixCreationError.into());
         }
 
-        Some(Self::new(arr.to_owned(), shape))
+        Ok(Self::new(arr.to_owned(), shape).unwrap())
     }
 
     /// Creates a matrix where all values are 0.
@@ -469,7 +484,8 @@ where
 
         let data: Vec<T> = (0..len).map(|_| rng.gen_range(start..=end)).collect();
 
-        Self::new(data, shape)
+        // Safe because shape doesn't have to match data from a user
+        Self::new(data, shape).unwrap()
     }
 
     /// Creates a matrix where all values are random between 0..=1.
@@ -495,18 +511,19 @@ where
     /// ```
     /// use sukker::Matrix;
     ///
-    /// // let m: Matrix<f32> = Matrix::from_file("../../test.txt");
+    /// // let m: Matrix<f32> = Matrix::from_file("../../test.txt").unwrap();
     ///
-    /// // m.print();
+    /// // m.print(4);
     /// ```
-    pub fn from_file(path: &'static str) -> Self {
+    pub fn from_file(path: &'static str) -> Result<Self, MatrixError> {
         let data =
-            fs::read_to_string(path).unwrap_or_else(|_| panic!("Failed to read file: {}", path));
+            fs::read_to_string(path).map_err(|_| MatrixError::MatrixFileReadError(path).into())?;
 
-        data.parse::<Self>().unwrap_or_else(|_| Self::default())
+        data.parse::<Self>()
+            .map_err(|_| MatrixError::MatrixParseError.into())
     }
 
-    /// HELPER, name is too retarded for public usecases
+    /// Helper function to create matrices
     fn from_shape(value: T, shape: Shape) -> Self {
         let (rows, cols) = shape;
 
@@ -514,7 +531,7 @@ where
 
         let data = vec![value; len];
 
-        Self::new(data, shape)
+        Self::new(data, shape).unwrap()
     }
 }
 
@@ -534,11 +551,6 @@ where
     Vec<T>: IntoParallelIterator,
     Vec<&'a T>: IntoParallelRefIterator<'a>,
 {
-    /// Converts matrix to a tensor
-    pub fn to_tensor(&self) {
-        todo!()
-    }
-
     /// Reshapes a matrix if possible.
     /// If the shapes don't match up, the old shape will be retained
     ///
@@ -555,6 +567,7 @@ where
     pub fn reshape(&mut self, new_shape: Shape) {
         if new_shape.0 * new_shape.1 != self.size() {
             println!("Can not reshape.. Keeping old dimensions for now");
+            return;
         }
 
         self.shape = new_shape;
@@ -584,13 +597,22 @@ where
     ///
     /// let matrix = Matrix::init(10.5, (2,3));
     ///
-    /// assert_eq!(matrix.get(1,2), 10.5);
+    /// assert_eq!(matrix.get(1,2).unwrap(), 10.5);:
     /// ```
-    pub fn get(&self, i: usize, j: usize) -> T {
-        self.data[at!(i, j, self.ncols)]
+    pub fn get(&self, i: usize, j: usize) -> Option<T> {
+        let idx = at!(i, j, self.ncols);
+
+        if idx >= self.size() {
+            return None;
+        }
+
+        Some(self.data[at!(i, j, self.ncols)])
     }
 
     ///  Gets a piece of the matrix out as a vector
+    ///
+    ///  If some indeces are out of bounds, the vec up until that point
+    ///  will be returned
     ///
     /// # Examples
     ///
@@ -607,11 +629,15 @@ where
         let (dx, dy) = size;
 
         iproduct!(start_row..start_row + dy, start_col..start_col + dx)
-            .map(|(i, j)| self.get(i, j))
+            .filter_map(|(i, j)| self.get(i, j))
             .collect()
     }
 
     ///  Gets a piece of the matrix out as a matrix
+    ///
+    ///  If some indeces are out of bounds, unlike `get_vec_slice`
+    ///  this function will return an IndexOutOfBoundsError
+    ///  and will not return data
     ///
     /// # Examples
     ///
@@ -619,19 +645,135 @@ where
     /// use sukker::Matrix;
     ///
     /// let matrix = Matrix::init(10.5, (4,4));
-    /// let sub_matrix = matrix.get_sub_matrix((1,1), (2,2));
+    /// let sub_matrix = matrix.get_sub_matrix((1,1), (2,2)).unwrap();
     ///
     /// assert_eq!(sub_matrix.data, vec![10.5,10.5,10.5,10.5]);
     /// ```
-    pub fn get_sub_matrix(&self, start_idx: Shape, size: Shape) -> Self {
+    pub fn get_sub_matrix(&self, start_idx: Shape, size: Shape) -> Result<Self, MatrixError> {
         let (start_row, start_col) = start_idx;
         let (dx, dy) = size;
 
         let data = iproduct!(start_row..start_row + dy, start_col..start_col + dx)
-            .map(|(i, j)| self.get(i, j))
+            .filter_map(|(i, j)| self.get(i, j))
             .collect();
 
-        Self::new(data, size)
+        return match Self::new(data, size) {
+            Ok(a) => Ok(a),
+            Err(e) => Err(MatrixError::MatrixIndexOutOfBoundsError.into()),
+        };
+    }
+
+    /// Concat two mtrices on a dimension
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::Matrix;
+    /// use sukker::Dimension;
+    ///
+    /// let matrix = Matrix::init(10.5, (4,4));
+    /// let matrix2 = Matrix::init(10.5, (1,4));
+    ///
+    /// let res = matrix.concat(&matrix2, Dimension::Row).unwrap();
+    ///
+    /// assert_eq!(res.shape, (5,4));
+    /// ```
+    pub fn concat(&self, other: &Self, dim: Dimension) -> Result<Self, MatrixError> {
+        match dim {
+            Dimension::Row => {
+                if self.ncols != other.ncols {
+                    return Err(MatrixError::MatrixConcatinationError.into());
+                }
+
+                let mut new_data = self.data;
+
+                new_data.extend(other.data.iter());
+
+                let nrows = self.nrows + other.nrows;
+                let shape = (nrows, self.ncols);
+
+                return Ok(Self::new(new_data, shape).unwrap());
+            }
+
+            Dimension::Col => {
+                if self.nrows != other.nrows {
+                    return Err(MatrixError::MatrixConcatinationError.into());
+                }
+
+                let mut new_data: Vec<T> = Vec::new();
+
+                let take_self = self.ncols;
+                let take_other = other.ncols;
+
+                for (idx, _) in self.data.iter().step_by(take_self).enumerate() {
+                    // Add from self, then other
+                    let row = (idx / take_self) * take_self;
+                    new_data.extend(self.data.iter().skip(row).take(take_self));
+                    new_data.extend(other.data.iter().skip(row).take(take_other));
+                }
+
+                let ncols = self.ncols + other.ncols;
+                let shape = (self.nrows, ncols);
+
+                return Ok(Self::new(new_data, shape).unwrap());
+            }
+        };
+    }
+
+    // TODO: Add option to transpose to be able to extend
+    // Doens't change anything if dimension mismatch
+
+    /// Extend a matrix with another on a dimension
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::Matrix;
+    /// use sukker::Dimension;
+    ///
+    /// let mut matrix = Matrix::init(10.5, (4,4));
+    /// let matrix2 = Matrix::init(10.5, (4,1));
+    ///
+    /// matrix.extend(&matrix2, Dimension::Col)
+    ///
+    /// assert_eq!(matrix.shape, (4,5));
+    /// ```
+    pub fn extend(&mut self, other: &Self, dim: Dimension) {
+        match dim {
+            Dimension::Row => {
+                if self.ncols != other.ncols {
+                    eprintln!("Error: Dimension mismatch");
+                    return;
+                }
+
+                self.data.extend(other.data.iter());
+
+                self.nrows += other.nrows;
+                self.shape = (self.nrows, self.ncols);
+            }
+
+            Dimension::Col => {
+                if self.nrows != other.nrows {
+                    eprintln!("Error: Dimension mismatch");
+                    return;
+                }
+
+                let mut new_data: Vec<T> = Vec::new();
+
+                let take_self = self.ncols;
+                let take_other = other.ncols;
+
+                for (idx, _) in self.data.iter().step_by(take_self).enumerate() {
+                    // Add from self, then other
+                    let row = (idx / take_self) * take_self;
+                    new_data.extend(self.data.iter().skip(row).take(take_self));
+                    new_data.extend(other.data.iter().skip(row).take(take_other));
+                }
+
+                self.ncols += other.ncols;
+                self.shape = (self.nrows, self.ncols);
+            }
+        };
     }
 
     ///  Sets element based on is and js
@@ -710,7 +852,9 @@ where
             .unwrap()
     }
 
-    /// Finds argmax based on row or col
+    /// Finds position in matrix where value is highest.
+    /// Restricted to find this across a row or column
+    /// in the matrix.
     ///
     /// # Examples
     ///
@@ -720,22 +864,30 @@ where
     /// let mut matrix = Matrix::init(1.0, (3,3));
     /// matrix.data[2] = 15.0;
     ///
-    /// assert_eq!(matrix.argmax(0, Dimension::Row), Some(15.0));
-    /// assert_eq!(matrix.argmax(1, Dimension::Row), Some(1.0));
     /// ```
-    pub fn argmax(&self, rowcol: usize, dimension: Dimension) -> Option<T> {
+    pub fn argmax(&self, rowcol: usize, dimension: Dimension) -> Option<Shape> {
         match dimension {
             Dimension::Row => {
                 if rowcol >= self.nrows - 1 {
                     return None;
                 }
 
-                self.data
-                    .par_iter()
+                let mut highest: T = T::one();
+                let mut i = 0;
+
+                for (idx, elem) in self
+                    .data
+                    .iter()
+                    .enumerate()
                     .skip(rowcol * self.ncols)
                     .take(self.ncols)
-                    .max_by(|a, b| a.partial_cmp(b).unwrap())
-                    .copied()
+                {
+                    if *elem >= highest {
+                        i = idx;
+                    }
+                }
+
+                Some(self.inverse_at(i))
             }
 
             Dimension::Col => {
@@ -743,17 +895,31 @@ where
                     return None;
                 }
 
-                self.data
-                    .par_iter()
+                let mut highest: T = T::one();
+
+                let mut i = 0;
+
+                for (idx, elem) in self
+                    .data
+                    .iter()
+                    .enumerate()
                     .skip(rowcol)
                     .step_by(self.ncols)
-                    .max_by(|a, b| a.partial_cmp(b).unwrap())
-                    .copied()
+                {
+                    if *elem >= highest {
+                        i = idx;
+                    }
+                }
+
+                Some(self.inverse_at(i))
             }
         }
     }
 
-    /// Finds argmax based on row or col
+    /// Finds position in matrix where value is lowest.
+    /// Restricted to find this across a row or column
+    /// in the matrix.
+    ///
     ///
     /// # Examples
     ///
@@ -763,22 +929,32 @@ where
     /// let mut matrix = Matrix::init(10.5, (3,3));
     /// matrix.data[1] = 1.0;
     ///
-    /// assert_eq!(matrix.argmin(1, Dimension::Col), Some(1.0));
-    /// assert_eq!(matrix.argmin(1, Dimension::Row), Some(10.5));
+    /// assert_eq!(matrix.argmin(1, Dimension::Col), Some(1));
     /// ```
-    pub fn argmin(&self, rowcol: usize, dimension: Dimension) -> Option<T> {
+    pub fn argmin(&self, rowcol: usize, dimension: Dimension) -> Option<Shape> {
         match dimension {
             Dimension::Row => {
                 if rowcol >= self.nrows - 1 {
                     return None;
                 }
 
-                self.data
-                    .par_iter()
+                let mut lowest: T = T::zero();
+
+                let mut i = 0;
+
+                for (idx, elem) in self
+                    .data
+                    .iter()
+                    .enumerate()
                     .skip(rowcol * self.ncols)
                     .take(self.ncols)
-                    .min_by(|a, b| a.partial_cmp(b).unwrap())
-                    .copied()
+                {
+                    if *elem < lowest {
+                        i = idx;
+                    }
+                }
+
+                Some(self.inverse_at(i))
             }
 
             Dimension::Col => {
@@ -786,12 +962,23 @@ where
                     return None;
                 }
 
-                self.data
-                    .par_iter()
+                let mut lowest: T = T::zero();
+
+                let mut i = 0;
+
+                for (idx, elem) in self
+                    .data
+                    .iter()
+                    .enumerate()
                     .skip(rowcol)
                     .step_by(self.ncols)
-                    .min_by(|a, b| a.partial_cmp(b).unwrap())
-                    .copied()
+                {
+                    if *elem <= lowest {
+                        i = idx;
+                    }
+                }
+
+                Some(self.inverse_at(i))
             }
         }
     }
