@@ -9,7 +9,10 @@
 //! Since storing large sparse matrices in memory is expensive
 //!
 //!
-//! # What datastructure does sukker use
+//! # What data structure does sukker use?
+//!
+//! For now, a hash map where the keys are indeces in the matrix
+//! and tha value is the value at that 2d index
 #![warn(missing_docs)]
 
 mod helper;
@@ -47,7 +50,7 @@ where
     Vec<&'a T>: IntoParallelRefIterator<'a>,
 {
     /// Vector containing all data
-    data: SparseMatrixData<'a, T>,
+    pub data: SparseMatrixData<'a, T>,
     /// Number of rows
     pub nrows: usize,
     /// Number of columns

@@ -24,7 +24,7 @@ use rand::Rng;
 use rayon::prelude::*;
 use std::iter::Sum;
 
-use crate::{MatrixElement, MatrixError};
+use crate::{MatrixElement, MatrixError, SparseMatrix};
 
 /// Shape represents the dimension size
 /// of the matrix as a tuple of usize
@@ -246,6 +246,16 @@ where
 
     /// Returns the shape of a matrix represented as  
     /// (usize, usize)
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use sukker::Matrix;
+    ///
+    /// let mat: Matrix<f32> = Matrix::eye(4);
+    ///
+    /// assert_eq!(mat.shape(), (4,4));
+    /// ```
     pub fn shape(&self) -> Shape {
         (self.nrows, self.ncols)
     }
@@ -511,6 +521,32 @@ where
 
         data.parse::<Self>()
             .map_err(|_| MatrixError::MatrixParseError.into())
+    }
+
+    /// Constructs a new dense matrix from a sparse one.
+    ///
+    /// This transfesrs ownership as well!
+    ///
+    /// Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, SparseMatrix};
+    ///
+    /// let sparse = SparseMatrix::<i32>::eye(3);
+    ///
+    /// let matrix = Matrix::from_sparse(sparse);
+    ///
+    /// assert_eq!(matrix.shape(), (3,3));
+    /// assert_eq!(matrix.at(0,0), 1);
+    /// ```
+    pub fn from_sparse(sparse: SparseMatrix<'a, T>) -> Self {
+        let mut mat = Self::zeros(sparse.shape());
+
+        for (&idx, &val) in sparse.data.iter() {
+            mat.set(val, idx);
+        }
+
+        mat
     }
 
     /// Helper function to create matrices
