@@ -1,4 +1,4 @@
-# Sukker - Matrix library written in rust
+# Sukker - Linear Algebra library written in rust
 
 ![Build Status](https://github.com/Jafagervik/sukker/actions/workflows/test.yml/badge.svg)
 [![Documentation](https://docs.rs/sukker/badge.svg)](https://docs.rs/sukker/)
@@ -14,10 +14,10 @@ Parallelized using rayon with support for many common datatypes,
 sukker tries to make matrix operations easier for the user, 
 while still giving you as the user the performance you deserve.
 
-Soon also with support for sparse matrices!
+Basic operations on sparse matrices are also supported now
 
-Main focus now is to work on adding more functions on the matrices, 
-and then
+Need a feature? Please let me/us know!
+
 
 ## Why V2 already?
 
