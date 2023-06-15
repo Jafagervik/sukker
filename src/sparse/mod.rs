@@ -597,7 +597,9 @@ where
     }
 
     /// Divides value to all non zero values in the matrix
-    /// and return a new matrix
+    /// and return a new matrix.
+    ///
+    /// Will panic if you choose to divide by zero
     ///
     /// Examples:
     ///
