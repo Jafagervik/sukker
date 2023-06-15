@@ -8,21 +8,32 @@
 
 
 Linear algebra in Rust!
+
 Parallelized using rayon with support for many common datatypes,
 sukker tries to make matrix operations easier for the user, 
-while still giving you as the user the performance you deserve
+while still giving you as the user the performance you deserve.
+
+Soon also with support for sparse matrices!
+
+Main focus now is to work on adding more functions on the matrices, 
+and then
+
+## Why V2 already?
+
+With added error handling and a good amount of rewriting, a major version was due 
+to avoid any confusion.
 
 ## Examples
 
 
 ```rust 
-use sukker::{Matrix, MatrixLinAlg};
+use sukker::Matrix;
 
 fn main() {
     let a = Matrix::<f32>::randomize((7,56));
     let b = Matrix::<f32>::randomize((56,8));
 
-    let c = a.matmul(&b);
+    let c = a.matmul(&b).unwrap();
 
     // To print this beautiful matrix:
     c.print(5);
@@ -42,4 +53,5 @@ Full API documentation can be found [here](https://docs.rs/sukker/latest/sukker/
 - [X] Serde support 
 - [X] Support for all signed numeric datatypes 
 - [X] Can be sent over threads
+- [X] Sparse matrices
 
