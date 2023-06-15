@@ -105,4 +105,18 @@ where
             }
         }
     }
+
+    // =============================================================
+    //     Sparse Matrix Mulitplication helpers
+    // =============================================================
+
+    // For nn x nn
+    pub fn matmul_sparse_nn(&self, other: &Self) -> Self {
+        Self::default()
+    }
+
+    // mn x np
+    pub fn matmul_sparse_mnnp(&self, other: &Self) -> Self {
+        Self::default()
+    }
 }

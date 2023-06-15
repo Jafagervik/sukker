@@ -246,6 +246,44 @@ where
         Self::init(data, matrix.shape())
     }
 
+    /// Csc in numpy uses 3 lists of same size
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let rows = vec![0,1,2,3];
+    /// let cols = vec![1,2,3,4];
+    /// let vals= vec![0.0,1.3,0.05,4.53];
+    ///
+    /// let shape = (6,7);
+    ///
+    /// let sparse = SparseMatrix::from_slices(&rows, &cols, &vals, shape).unwrap();
+    ///
+    /// assert_eq!(sparse.shape(), (6,7));
+    /// assert_eq!(sparse.at(1,2), 1.3);
+    /// assert_eq!(sparse.at(0,1), 0.0);
+    /// ```
+    pub fn from_slices(
+        rows: &[usize],
+        cols: &[usize],
+        vals: &[T],
+        shape: Shape,
+    ) -> Result<Self, MatrixError> {
+        if rows.len() != cols.len() && cols.len() != vals.len() {
+            return Err(MatrixError::MatrixDimensionMismatchError.into());
+        }
+
+        let data: SparseMatrixData<T> = rows
+            .iter()
+            .zip(cols.iter().zip(vals.iter()))
+            .map(|(&i, (&j, &val))| ((i, j), val))
+            .collect();
+
+        Ok(Self::init(data, shape))
+    }
+
     /// Gets an element from the sparse matrix.
     ///
     /// Returns None if index is out of bounds.
@@ -309,6 +347,11 @@ where
             .entry(idx)
             .and_modify(|val| *val = value)
             .or_insert(value);
+    }
+
+    /// A way of inserting with individual row and col
+    pub fn insert(&mut self, i: usize, j: usize, value: T) {
+        self.set((i, j), value);
     }
 
     /// Prints out the sparse matrix data
@@ -789,10 +832,23 @@ where
     }
 
     /// Sparse matrix multiplication
-    //sparse_/
-    /// Coming soon
-    fn matmul_sparse(&self, other: &Self) -> Self {
-        unimplemented!()
+    ///
+    /// For two n x n matrices, we use this algorithm:
+    /// https://theory.stanford.edu/~virgi/cs367/papers/sparsemult.pdf
+    ///
+    /// Else, we use this:
+    /// link..
+    ///
+    fn matmul_sparse(&self, other: &Self) -> Result<Self, MatrixError> {
+        if self.ncols != other.nrows {
+            return Err(MatrixError::MatrixMultiplicationDimensionMismatchError.into());
+        }
+
+        if self.shape() == other.shape() {
+            return Ok(self.matmul_sparse_nn(other));
+        }
+
+        Ok(self.matmul_sparse_mnnp(other))
     }
 }
 
