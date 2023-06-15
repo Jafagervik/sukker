@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use sukker::{SparseMatrix, SparseMatrixData};
+use sukker::{smd, SparseMatrix, SparseMatrixData};
 
 #[test]
 fn sparse_basic() {
@@ -26,12 +26,7 @@ fn sparse_medium() {
 
     let sparse = SparseMatrix::<f64>::init(indexes, (4, 4));
 
-    let mut indexes2: SparseMatrixData<f64> = HashMap::new();
-
-    indexes2.insert((0, 0), 2.0);
-    indexes2.insert((1, 0), 4.0);
-    indexes2.insert((1, 1), 8.0);
-    indexes2.insert((2, 3), 6.0);
+    let indexes2 = smd![((0, 0), 2.0), ((1, 0), 4.0), ((1, 1), 8.0), ((2, 3), 6.0)];
 
     let sparse2 = SparseMatrix::<f64>::init(indexes2, (4, 4));
 
