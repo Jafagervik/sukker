@@ -123,9 +123,6 @@ where
         let y = self.ncols;
         let z = other.ncols;
 
-        println!("{}", self);
-        println!("{}", other);
-
         let mut data: SparseMatrixData<T> = HashMap::new();
 
         for i in 0..x {
@@ -141,16 +138,10 @@ where
                     .map(|k| self.at(i, j) * other.at(j, k))
                     .sum();
 
-                println!("i: {}, j: {}, val: {}", i, j, result);
-
                 data.insert((i, j), result);
             }
         }
 
-        let a = Self::init(data, (x, z));
-
-        println!("{}", a);
-
-        a
+        Self::init(data, (x, z))
     }
 }
