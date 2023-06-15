@@ -61,9 +61,9 @@ where
             match self.data.get_mut(&idx) {
                 Some(value) => match op {
                     Operation::ADD => *value += val,
-                    Operation::SUB => *value += val,
-                    Operation::MUL => *value += val,
-                    Operation::DIV => *value += val,
+                    Operation::SUB => *value -= val,
+                    Operation::MUL => *value *= val,
+                    Operation::DIV => *value /= val,
                 },
                 None => self.set(idx, val),
             };
@@ -93,9 +93,9 @@ where
         for (_, value) in self.data.iter_mut() {
             match op {
                 Operation::ADD => *value += val,
-                Operation::SUB => *value += val,
-                Operation::MUL => *value += val,
-                Operation::DIV => *value += val,
+                Operation::SUB => *value -= val,
+                Operation::MUL => *value *= val,
+                Operation::DIV => *value /= val,
             }
         }
     }

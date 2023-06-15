@@ -473,6 +473,66 @@ where
         Self::sparse_helper_self(self, other, Operation::ADD);
     }
 
+    /// Subs rhs matrix on to lhs matrix.
+    /// All elements from rhs gets inserted into lhs
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let mut sparse1 = SparseMatrix::<i32>::eye(3);
+    /// let sparse2 = SparseMatrix::<i32>::eye(3);
+    ///
+    /// sparse1.sub_self(&sparse2);
+    ///
+    /// assert_eq!(sparse1.shape(), (3,3));
+    /// assert_eq!(sparse1.get(0,0).unwrap(), 0);
+    /// ```
+    pub fn sub_self(&mut self, other: &Self) {
+        Self::sparse_helper_self(self, other, Operation::SUB);
+    }
+
+    /// Multiplies  rhs matrix on to lhs matrix.
+    /// All elements from rhs gets inserted into lhs
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let mut sparse1 = SparseMatrix::<i32>::eye(3);
+    /// let sparse2 = SparseMatrix::<i32>::eye(3);
+    ///
+    /// sparse1.mul_self(&sparse2);
+    ///
+    /// assert_eq!(sparse1.shape(), (3,3));
+    /// assert_eq!(sparse1.get(0,0).unwrap(), 1);
+    /// ```
+    pub fn mul_self(&mut self, other: &Self) {
+        Self::sparse_helper_self(self, other, Operation::MUL);
+    }
+
+    /// Divides rhs matrix on to lhs matrix.
+    /// All elements from rhs gets inserted into lhs
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let mut sparse1 = SparseMatrix::<i32>::eye(3);
+    /// let sparse2 = SparseMatrix::<i32>::eye(3);
+    ///
+    /// sparse1.div_self(&sparse2);
+    ///
+    /// assert_eq!(sparse1.shape(), (3,3));
+    /// assert_eq!(sparse1.get(0,0).unwrap(), 1);
+    /// ```
+    pub fn div_self(&mut self, other: &Self) {
+        Self::sparse_helper_self(self, other, Operation::DIV);
+    }
+
     // =============================================================
     //
     //    Matrix operations  with a value
@@ -498,6 +558,63 @@ where
         Self::sparse_helper_val(self, value, Operation::ADD)
     }
 
+    /// Subs value to all non zero values in the matrix
+    /// and return a new matrix
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let sparse = SparseMatrix::<f32>::eye(3);
+    /// let val: f32 = 4.5;
+    ///
+    /// let res = sparse.sub_val(val);
+    ///
+    /// assert_eq!(res.get(0,0).unwrap(), -3.5);
+    /// ```
+    pub fn sub_val(&self, value: T) -> Self {
+        Self::sparse_helper_val(self, value, Operation::SUB)
+    }
+
+    /// Multiplies value to all non zero values in the matrix
+    /// and return a new matrix
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let sparse = SparseMatrix::<f32>::eye(3);
+    /// let val: f32 = 4.5;
+    ///
+    /// let res = sparse.mul_val(val);
+    ///
+    /// assert_eq!(res.get(0,0).unwrap(), 4.5);
+    /// ```
+    pub fn mul_val(&self, value: T) -> Self {
+        Self::sparse_helper_val(self, value, Operation::MUL)
+    }
+
+    /// Divides value to all non zero values in the matrix
+    /// and return a new matrix
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let sparse = SparseMatrix::<f32>::eye(3);
+    /// let val: f32 = 4.0;
+    ///
+    /// let res = sparse.div_val(val);
+    ///
+    /// assert_eq!(res.get(0,0).unwrap(), 0.25);
+    /// ```
+    pub fn div_val(&self, value: T) -> Self {
+        Self::sparse_helper_val(self, value, Operation::DIV)
+    }
+
     // =============================================================
     //
     //    Matrix operations modyfing lhs  with a value
@@ -520,6 +637,60 @@ where
     /// ```
     pub fn add_val_self(&mut self, value: T) {
         Self::sparse_helper_self_val(self, value, Operation::ADD)
+    }
+
+    /// Subtracts value to all non zero elements in matrix
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let mut sparse = SparseMatrix::<f64>::eye(3);
+    /// let val = 10.0;
+    ///
+    /// sparse.sub_val_self(val);
+    ///
+    /// assert_eq!(sparse.get(0,0).unwrap(), -9.0);
+    /// ```
+    pub fn sub_val_self(&mut self, value: T) {
+        Self::sparse_helper_self_val(self, value, Operation::SUB)
+    }
+
+    /// Multiplies value to all non zero elements in matrix
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let mut sparse = SparseMatrix::<f64>::eye(3);
+    /// let val = 10.0;
+    ///
+    /// sparse.mul_val_self(val);
+    ///
+    /// assert_eq!(sparse.get(0,0).unwrap(), 10.0);
+    /// ```
+    pub fn mul_val_self(&mut self, value: T) {
+        Self::sparse_helper_self_val(self, value, Operation::MUL)
+    }
+
+    /// Divides all non zero elemnts in matrix by value in-place
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let mut sparse = SparseMatrix::<f64>::eye(3);
+    /// let val = 10.0;
+    ///
+    /// sparse.div_val_self(val);
+    ///
+    /// assert_eq!(sparse.get(0,0).unwrap(), 0.1);
+    /// ```
+    pub fn div_val_self(&mut self, value: T) {
+        Self::sparse_helper_self_val(self, value, Operation::DIV)
     }
 
     /// Sparse matrix multiplication
@@ -574,5 +745,82 @@ where
         F: Fn((Shape, T)) -> bool + Sync + Send,
     {
         self.data.clone().into_par_iter().any(pred)
+    }
+
+    /// Counts all occurances where predicate holds
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let sparse = SparseMatrix::<i32>::eye(3);
+    ///
+    /// assert_eq!(sparse.count_where(|(_, &val)| val == 1), 3);
+    /// ```
+    pub fn count_where<F>(&'a self, pred: F) -> usize
+    where
+        F: Fn((&Shape, &T)) -> bool + Sync,
+    {
+        self.data.par_iter().filter(|&e| pred(e)).count()
+    }
+
+    /// Sums all occurances where predicate holds
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let sparse = SparseMatrix::<f32>::eye(3);
+    ///
+    /// assert_eq!(sparse.sum_where(|(&(i, j), &val)| val == 1.0 && i > 0), 2.0);
+    /// ```
+    pub fn sum_where<F>(&self, pred: F) -> T
+    where
+        F: Fn((&Shape, &T)) -> bool + Sync,
+    {
+        let mut res = T::zero();
+        for (idx, elem) in self.data.iter() {
+            if pred((idx, elem)) {
+                res += elem
+            }
+        }
+
+        res
+    }
+
+    /// Sets all elements where predicate holds true.
+    /// The new value is to be set inside the predicate as well
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// ```
+    pub fn set_where<F>(&mut self, mut pred: F)
+    where
+        F: FnMut((&Shape, &mut T)) + Sync + Send,
+    {
+        self.data.iter_mut().for_each(|e| pred(e));
+    }
+
+    fn find<F>(&self, pred: F) -> Option<Shape>
+    where
+        F: Fn(&T) -> bool + Sync,
+    {
+        unimplemented!()
+    }
+
+    /// Finds all indeces where predicates holds if possible
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// ```
+    fn find_all<F>(&self, pred: F) -> Option<Vec<Shape>>
+    where
+        F: Fn(&T) -> bool + Sync,
+    {
+        unimplemented!()
     }
 }
