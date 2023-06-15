@@ -27,6 +27,8 @@ to avoid any confusion.
 ## Examples
 
 
+### Dens Matrices 
+
 ```rust 
 use sukker::Matrix;
 
@@ -41,6 +43,27 @@ fn main() {
 }
 ```
 
+### Sparse Matrices 
+
+
+```rust 
+use std::collections::HashMap;
+use sukker::{SparseMatrix, SparseMatrixData};
+
+fn main() {
+    let mut indexes: SparseMatrixData<f64> = HashMap::new();
+
+    indexes.insert((0, 1), 2.0);
+    indexes.insert((1, 0), 4.0);
+    indexes.insert((2, 3), 6.0);
+    indexes.insert((3, 3), 8.0);
+
+    let sparse = SparseMatrix::<f64>::init(indexes, (4, 4));
+
+    sparse.print(3);
+}
+```
+
 More examples can be found [here](/examples/)
 
 
@@ -50,9 +73,9 @@ Full API documentation can be found [here](https://docs.rs/sukker/latest/sukker/
 ## Features 
 - [X] Easy to use!
 - [X] Blazingly fast
-- [X] Common matrix operations exists under MatrixLinAlg trait or just Matrix sturct
+- [X] Multiple features on dense matrices
 - [X] Serde support 
 - [X] Support for all signed numeric datatypes 
 - [X] Can be sent over threads
-- [X] Sparse matrices
+- [X] Sparse matrices with matrix multiplications
 
