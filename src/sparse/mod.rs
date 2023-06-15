@@ -12,6 +12,10 @@
 //! # What datastructure does sukker use
 #![warn(missing_docs)]
 
+mod helper;
+
+use helper::*;
+
 use std::fmt::Display;
 use std::{collections::HashMap, error::Error, marker::PhantomData, str::FromStr};
 
@@ -21,7 +25,7 @@ use serde::{Deserialize, Serialize};
 use crate::{Matrix, MatrixElement, MatrixError, Shape};
 
 macro_rules! at {
-    ($row:ident, $col:ident, $ncols:expr) => {
+    ($row:expr, $col:expr, $ncols:expr) => {
         ($row * $ncols + $col) as usize
     };
 }
@@ -290,16 +294,16 @@ where
     /// Sets an element
     ///
     /// Mutates or inserts a value based on indeces given
-    pub fn set(&mut self, i: usize, j: usize, value: T) {
-        let idx = at!(i, j, self.ncols);
+    pub fn set(&mut self, idx: Shape, value: T) {
+        let i = at!(idx.0, idx.1, self.ncols);
 
-        if idx >= self.size() {
+        if i >= self.size() {
             eprintln!("Error, index out of bounds. Not setting value");
             return;
         }
 
         self.data
-            .entry((i, j))
+            .entry(idx)
             .and_modify(|val| *val = value)
             .or_insert(value);
     }
@@ -317,6 +321,12 @@ where
     #[inline(always)]
     pub fn size(&self) -> usize {
         self.ncols * self.nrows
+    }
+
+    /// Get's amount of 0s in the matrix
+    #[inline(always)]
+    pub fn get_zero_count(&self) -> usize {
+        self.size() - self.data.len()
     }
 
     /// Calcualtes sparcity for the given matrix
@@ -376,30 +386,193 @@ where
     /// assert_eq!(res.get(0,0).unwrap(), 2);
     /// ```
     pub fn add(&self, other: &Self) -> Result<Self, MatrixError> {
-        if self.shape() != other.shape() {
-            return Err(MatrixError::MatrixDimensionMismatchError.into());
-        }
+        Self::sparse_helper(&self, other, Operation::ADD)
+    }
 
-        let data: SparseMatrixData<T> = self
-            .data
-            .iter()
-            .zip(other.data.iter())
-            .filter_map(|((is, &val1), (js, &val2))| {
-                if is != js {
-                    return None;
-                }
+    /// Subtracts two sparse matrices
+    /// and return a new one
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let sparse1 = SparseMatrix::<i32>::eye(3);
+    /// let sparse2 = SparseMatrix::<i32>::eye(3);
+    ///
+    /// let res = sparse1.sub(&sparse2).unwrap();
+    ///
+    /// assert_eq!(res.shape(), (3,3));
+    /// assert_eq!(res.get(0,0).unwrap(), 2);
+    /// ```
+    pub fn sub(&self, other: &Self) -> Result<Self, MatrixError> {
+        Self::sparse_helper(&self, other, Operation::SUB)
+    }
+    /// Multiplies two sparse matrices together
+    /// and return a new one
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let sparse1 = SparseMatrix::<i32>::eye(3);
+    /// let sparse2 = SparseMatrix::<i32>::eye(3);
+    ///
+    /// let res = sparse1.mul(&sparse2).unwrap();
+    ///
+    /// assert_eq!(res.shape(), (3,3));
+    /// assert_eq!(res.get(0,0).unwrap(), 2);
+    /// ```
+    pub fn mul(&self, other: &Self) -> Result<Self, MatrixError> {
+        Self::sparse_helper(&self, other, Operation::MUL)
+    }
+    /// Divides two sparse matrices
+    /// and return a new one
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let sparse1 = SparseMatrix::<i32>::eye(3);
+    /// let sparse2 = SparseMatrix::<i32>::eye(3);
+    ///
+    /// let res = sparse1.div(&sparse2).unwrap();
+    ///
+    /// assert_eq!(res.shape(), (3,3));
+    /// assert_eq!(res.get(0,0).unwrap(), 2);
+    /// ```
+    pub fn div(&self, other: &Self) -> Result<Self, MatrixError> {
+        Self::sparse_helper(&self, other, Operation::DIV)
+    }
 
-                return Some((is.clone(), val1 + val2));
-            })
-            .collect();
+    // =============================================================
+    //
+    //    Matrix operations modifying the lhs
+    //
+    // =============================================================
 
-        Ok(Self::init(data, self.shape()))
+    /// Adds rhs matrix on to lhs matrix.
+    /// All elements from rhs gets inserted into lhs
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let mut sparse1 = SparseMatrix::<i32>::eye(3);
+    /// let sparse2 = SparseMatrix::<i32>::eye(3);
+    ///
+    /// sparse1.add_self(&sparse2);
+    ///
+    /// assert_eq!(sparse1.shape(), (3,3));
+    /// assert_eq!(sparse1.get(0,0).unwrap(), 2);
+    /// ```
+    pub fn add_self(&mut self, other: &Self) {
+        Self::sparse_helper_self(self, other, Operation::ADD);
+    }
+
+    // =============================================================
+    //
+    //    Matrix operations  with a value
+    //
+    // =============================================================
+
+    /// Adds value to all non zero values in the matrix
+    /// and return a new matrix
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let sparse = SparseMatrix::<f32>::eye(3);
+    /// let val: f32 = 4.5;
+    ///
+    /// let res = sparse.add_val(val);
+    ///
+    /// assert_eq!(res.get(0,0).unwrap(), 5.5);
+    /// ```
+    pub fn add_val(&self, value: T) -> Self {
+        Self::sparse_helper_val(self, value, Operation::ADD)
+    }
+
+    // =============================================================
+    //
+    //    Matrix operations modyfing lhs  with a value
+    //
+    // =============================================================
+
+    /// Adds value to all non zero elements in matrix
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let mut sparse = SparseMatrix::<f64>::eye(3);
+    /// let val = 10.0;
+    ///
+    /// sparse.add_val_self(val);
+    ///
+    /// assert_eq!(sparse.get(0,0).unwrap(), 11.0);
+    /// ```
+    pub fn add_val_self(&mut self, value: T) {
+        Self::sparse_helper_self_val(self, value, Operation::ADD)
     }
 
     /// Sparse matrix multiplication
-    ///
+    //sparse_/
     /// Coming soon
     fn matmul_sparse(&self, other: &Self) -> Self {
         unimplemented!()
+    }
+}
+
+/// Predicates for sparse matrices
+impl<'a, T> SparseMatrix<'a, T>
+where
+    T: MatrixElement,
+    <T as FromStr>::Err: Error + 'static,
+    Vec<T>: IntoParallelIterator,
+    Vec<&'a T>: IntoParallelRefIterator<'a>,
+{
+    /// Returns whether or not predicate holds for all values
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let sparse = SparseMatrix::<i32>::eye(3);
+    ///
+    /// assert_eq!(sparse.shape(), (3,3));
+    /// assert_eq!(sparse.all(|(idx, val)| val >= 0), true);
+    /// ```
+    pub fn all<F>(&self, pred: F) -> bool
+    where
+        F: Fn((Shape, T)) -> bool + Sync + Send,
+    {
+        self.data.clone().into_par_iter().all(pred)
+    }
+
+    /// Returns whether or not predicate holds for any
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let sparse = SparseMatrix::<i32>::eye(3);
+    ///
+    /// assert_eq!(sparse.shape(), (3,3));
+    /// assert_eq!(sparse.any(|(_, val)| val == 1), true);
+    /// ```
+    pub fn any<F>(&self, pred: F) -> bool
+    where
+        F: Fn((Shape, T)) -> bool + Sync + Send,
+    {
+        self.data.clone().into_par_iter().any(pred)
     }
 }

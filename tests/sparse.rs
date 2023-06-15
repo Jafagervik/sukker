@@ -1,13 +1,8 @@
 use std::collections::HashMap;
 use sukker::{SparseMatrix, SparseMatrixData};
 
-fn old() {
-    let matrix = SparseMatrix::<i32>::eye(100);
-
-    println!("Sparcity: {}", matrix.sparcity());
-
-    // matrix.print(3);
-
+#[test]
+fn sparse_basic() {
     let sparse1 = SparseMatrix::<i32>::eye(3);
     let sparse2 = SparseMatrix::<i32>::eye(3);
 
@@ -18,12 +13,10 @@ fn old() {
     assert_eq!(res.get(1, 1).unwrap(), 2);
     assert_eq!(res.get(2, 2).unwrap(), 2);
     assert_eq!(res.get(1, 2).unwrap(), 0);
-
-    println!("{}", res);
-    res.print(5);
 }
 
-fn main() {
+#[test]
+fn sparse_medium() {
     let mut indexes: SparseMatrixData<f64> = HashMap::new();
 
     indexes.insert((0, 1), 2.0);
@@ -43,8 +36,6 @@ fn main() {
     let sparse2 = SparseMatrix::<f64>::init(indexes2, (4, 4));
 
     let res = sparse.add(&sparse2).unwrap();
-
-    res.print(3);
 
     assert_eq!(res.at(0, 0), 2.0);
     assert_eq!(res.at(0, 1), 2.0);
