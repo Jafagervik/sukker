@@ -318,12 +318,30 @@ where
     }
 
     /// Gets the size of the sparse matrix
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let sparse = SparseMatrix::<i32>::eye(4);
+    ///
+    /// assert_eq!(sparse.size(), 16);
     #[inline(always)]
     pub fn size(&self) -> usize {
         self.ncols * self.nrows
     }
 
     /// Get's amount of 0s in the matrix
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let sparse = SparseMatrix::<i32>::eye(4);
+    ///
+    /// assert_eq!(sparse.get_zero_count(), 12);
     #[inline(always)]
     pub fn get_zero_count(&self) -> usize {
         self.size() - self.data.len()
@@ -358,6 +376,76 @@ where
     /// ```
     pub fn shape(&self) -> Shape {
         (self.nrows, self.ncols)
+    }
+
+    /// Transpose the matrix
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let mut sparse = SparseMatrix::<i32>::new(4,4);
+    ///
+    /// sparse.set((2,0), 1);
+    /// sparse.set((3,0), 2);
+    /// sparse.set((0,1), 3);
+    /// sparse.set((0,2), 4);
+    ///
+    /// sparse.transpose();
+    ///
+    /// assert_eq!(sparse.at(0,2), 1);
+    /// assert_eq!(sparse.at(0,3), 2);
+    /// assert_eq!(sparse.at(1,0), 3);
+    /// assert_eq!(sparse.at(2,0), 4);
+    ///
+    /// // Old value is now gone
+    /// assert_eq!(sparse.get(3,0), Some(0));
+    /// ```
+    pub fn transpose(&mut self) {
+        let mut new_data: SparseMatrixData<T> = HashMap::new();
+
+        for (&(i, j), &val) in self.data.iter() {
+            new_data.insert((j, i), val);
+        }
+
+        self.data = new_data;
+
+        swap(&mut self.nrows, &mut self.ncols);
+    }
+
+    /// Shorthand for `transpose`
+    pub fn t(&mut self) {
+        self.transpose();
+    }
+
+    /// Tranpose the matrix into a new copy
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let mut mat = SparseMatrix::<i32>::new(4,4);
+    ///
+    /// mat.set((2,0), 1);
+    /// mat.set((3,0), 2);
+    /// mat.set((0,1), 3);
+    /// mat.set((0,2), 4);
+    ///
+    /// let sparse = mat.transpose_new();
+    ///
+    /// assert_eq!(sparse.at(0,2), 1);
+    /// assert_eq!(sparse.at(0,3), 2);
+    /// assert_eq!(sparse.at(1,0), 3);
+    /// assert_eq!(sparse.at(2,0), 4);
+    ///
+    /// assert_eq!(sparse.get(3,0), Some(0));
+    /// ```
+    pub fn transpose_new(&self) -> Self {
+        let mut res = self.clone();
+        res.transpose();
+        res
     }
 }
 
