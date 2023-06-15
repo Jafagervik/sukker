@@ -4,6 +4,10 @@
 //!
 //! This file is sub 1500 lines and acts as the core file
 
+mod helper;
+
+use helper::*;
+
 use serde::{Deserialize, Serialize};
 use std::{
     error::Error,
@@ -15,27 +19,18 @@ use std::{
 };
 
 use itertools::{iproduct, Itertools};
-use num_traits::{
-    pow,
-    sign::{abs, Signed},
-    Num, NumAssign, NumAssignOps, NumAssignRef, NumOps, One, Zero,
-};
-use rand::{distributions::uniform::SampleUniform, Rng};
+use num_traits::{pow, sign::abs};
+use rand::Rng;
 use rayon::prelude::*;
-use std::iter::{Product, Sum};
+use std::iter::Sum;
 
-use crate::MatrixError;
+use crate::{MatrixElement, MatrixError};
 
 /// Shape represents the dimension size
 /// of the matrix as a tuple of usize
 pub type Shape = (usize, usize);
 
 /// Helper method to swap to usizes
-fn swap(lhs: &mut usize, rhs: &mut usize) {
-    let temp = *lhs;
-    *lhs = *rhs;
-    *rhs = temp;
-}
 
 /// Calculates 1D index from row and col
 macro_rules! at {
@@ -60,32 +55,6 @@ where
     /// Number of columns
     pub ncols: usize,
     _lifetime: PhantomData<&'a T>,
-}
-
-pub trait MatrixElement:
-    Copy
-    + Clone
-    + PartialOrd
-    + Signed
-    + Sum
-    + Product
-    + Display
-    + Debug
-    + FromStr
-    + Default
-    + One
-    + PartialEq
-    + Zero
-    + Send
-    + Sync
-    + Sized
-    + Num
-    + NumOps
-    + NumAssignOps
-    + NumAssignRef
-    + NumAssign
-    + SampleUniform
-{
 }
 
 impl<'a, T> Error for Matrix<'a, T>
@@ -114,14 +83,6 @@ where
     Vec<&'a T>: IntoParallelRefIterator<'a>,
 {
 }
-
-impl MatrixElement for i8 {}
-impl MatrixElement for i16 {}
-impl MatrixElement for i32 {}
-impl MatrixElement for i64 {}
-impl MatrixElement for i128 {}
-impl MatrixElement for f32 {}
-impl MatrixElement for f64 {}
 
 impl<'a, T> FromStr for Matrix<'a, T>
 where

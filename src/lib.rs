@@ -1,9 +1,11 @@
+pub mod common;
 pub mod constants;
+pub mod error;
 pub mod matrix;
 pub mod sparse;
-pub mod error;
 
+pub use common::*;
 pub use constants::*;
+pub use error::*;
 pub use matrix::*;
 pub use sparse::*;
-pub use error::*;

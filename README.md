@@ -5,6 +5,7 @@
 [![Crates.io](https://img.shields.io/crates/v/sukker.svg)](https://crates.io/crates/sukker)
 [![Coverage Status](https://codecov.io/gh/Jafagervik/sukker/branch/master/graph/badge.svg)](https://codecov.io/gh/Jafagervik/sukker)
 ![Maintenance](https://img.shields.io/badge/maintenance-experimental-blue.svg)
+![License](https://img.shields.io/crates/l/sukker)
 
 
 Linear algebra in Rust!
