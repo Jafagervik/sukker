@@ -679,6 +679,8 @@ where
 
     /// Divides all non zero elemnts in matrix by value in-place
     ///
+    /// Will panic if you choose to divide by zero
+    ///
     /// Examples:
     ///
     /// ```
