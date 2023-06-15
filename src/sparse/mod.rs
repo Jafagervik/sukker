@@ -25,13 +25,7 @@ use std::{collections::HashMap, error::Error, marker::PhantomData, str::FromStr}
 use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 
-use crate::{Matrix, MatrixElement, MatrixError, Shape};
-
-macro_rules! at {
-    ($row:expr, $col:expr, $ncols:expr) => {
-        ($row * $ncols + $col) as usize
-    };
-}
+use crate::{at, smd, Matrix, MatrixElement, MatrixError, Shape};
 
 /// SparseMatrixData represents the datatype used to store information
 /// about non-zero values in a general matrix.
@@ -135,14 +129,16 @@ where
     ///
     /// ```
     /// use std::collections::HashMap;
-    /// use sukker::{SparseMatrix, SparseMatrixData};
+    /// use sukker::{smd, SparseMatrix, SparseMatrixData};
     ///
-    /// let mut indexes: SparseMatrixData<f64> = HashMap::new();
-    ///
-    /// indexes.insert((0,0), 2.0);
-    /// indexes.insert((0,3), 4.0);
-    /// indexes.insert((4,5), 6.0);
-    /// indexes.insert((2,7), 8.0);
+    /// // Here we can use the smd! macro
+    /// // to easily be able to set up a new hashmap
+    /// let indexes: SparseMatrixData<f64> = smd![
+    ///     ( (0, 0), 2.0),
+    ///     ( (0, 3), 4.0),
+    ///     ( (4, 5), 6.0),
+    ///     ( (2, 7), 8.0)
+    /// ];
     ///
     /// let sparse = SparseMatrix::<f64>::init(indexes, (3,3));
     ///

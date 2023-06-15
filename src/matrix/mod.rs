@@ -24,20 +24,13 @@ use rand::Rng;
 use rayon::prelude::*;
 use std::iter::Sum;
 
-use crate::{MatrixElement, MatrixError, SparseMatrix};
+use crate::{at, MatrixElement, MatrixError, SparseMatrix};
 
 /// Shape represents the dimension size
 /// of the matrix as a tuple of usize
 pub type Shape = (usize, usize);
 
 /// Helper method to swap to usizes
-
-/// Calculates 1D index from row and col
-macro_rules! at {
-    ($row:expr, $col:expr, $ncols:expr) => {
-        $row * $ncols + $col
-    };
-}
 
 #[derive(Clone, PartialEq, PartialOrd, Debug, Serialize, Deserialize)]
 /// General dense matrix
@@ -1855,24 +1848,7 @@ where
             return Err(MatrixError::MatrixDimensionMismatchError.into());
         }
 
-        let r1 = self.nrows;
-        let c1 = self.ncols;
-        let c2 = other.ncols;
-
-        let mut data = vec![T::zero(); c2 * r1];
-
-        let t_other = other.transpose_copy();
-
-        for i in 0..r1 {
-            for j in 0..c2 {
-                data[at!(i, j, c2)] = (0..c1)
-                    .into_par_iter()
-                    .map(|k| self.data[at!(i, k, c1)] * t_other.data[at!(j, k, t_other.ncols)])
-                    .sum();
-            }
-        }
-
-        Ok(Self::new(data, (c2, r1)).unwrap())
+        Ok(self.matmul_helper(other))
     }
 
     /// Transpose a matrix in-place
