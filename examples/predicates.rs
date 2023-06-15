@@ -1,4 +1,4 @@
-use sukker::{Matrix, MatrixLinAlg};
+use sukker::Matrix;
 
 fn main() {
     let a = Matrix::randomize_range(1f32, 100f32, (3, 1024));
@@ -10,4 +10,11 @@ fn main() {
     let cw: usize = b.count_where(|&e| e >= 42f32);
     let f: Option<(usize, usize)> = a.find(|&e| e >= 50f32);
     let fa: Option<Vec<(usize, usize)>> = b.find_all(|&e| e >= 50f32);
+
+    println!("Any returns: {}", any);
+    println!("All returns: {}", all);
+    println!("Sum where  returns: {}", sw);
+    println!("Count where returns: {}", cw);
+    println!("Find returns: {:?}", f);
+    println!("Find all returns: {:?}", fa);
 }
