@@ -24,7 +24,7 @@ use std::fmt::Display;
 use std::fs;
 use std::{collections::HashMap, error::Error, marker::PhantomData, str::FromStr};
 
-use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{at, smd, LinAlgFloats, Matrix, MatrixElement, MatrixError, Shape};
@@ -1181,23 +1181,89 @@ where
         self.data.iter_mut().for_each(|e| pred(e));
     }
 
-    fn find<F>(&self, pred: F) -> Option<Shape>
-    where
-        F: Fn(&T) -> bool + Sync,
-    {
-        unimplemented!()
-    }
-
-    /// Finds all indeces where predicates holds if possible
+    /// Finds value of first occurance where predicate holds true
     ///
     /// # Examples
     ///
     /// ```
     /// ```
-    fn find_all<F>(&self, pred: F) -> Option<Vec<Shape>>
+    pub fn find<F>(&self, pred: F) -> Option<T>
     where
-        F: Fn(&T) -> bool + Sync,
+        F: Fn((&Shape, &T)) -> bool + Sync,
     {
-        unimplemented!()
+        for entry in &self.data {
+            if pred(entry) {
+                return Some(*entry.1);
+            }
+        }
+
+        None
+    }
+
+    /// Finds all values where predicates holds if possible
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// ```
+    fn find_all<F>(&self, pred: F) -> Option<Vec<T>>
+    where
+        F: Fn((&Shape, &T)) -> bool + Sync,
+    {
+        let mut idxs: Vec<T> = Vec::new();
+        for entry in &self.data {
+            if pred(entry) {
+                idxs.push(*entry.1);
+            }
+        }
+
+        if !idxs.is_empty() {
+            Some(idxs)
+        } else {
+            None
+        }
+    }
+
+    /// Finds indices of first occurance where predicate holds true
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// ```
+    pub fn position<F>(&self, pred: F) -> Option<Shape>
+    where
+        F: Fn((&Shape, &T)) -> bool + Sync,
+    {
+        for entry in &self.data {
+            if pred(entry) {
+                return Some(*entry.0);
+            }
+        }
+
+        None
+    }
+
+    /// Finds all positions  where predicates holds if possible
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// ```
+    fn positions<F>(&self, pred: F) -> Option<Vec<Shape>>
+    where
+        F: Fn((&Shape, &T)) -> bool + Sync,
+    {
+        let mut idxs: Vec<Shape> = Vec::new();
+        for entry in &self.data {
+            if pred(entry) {
+                idxs.push(*entry.0);
+            }
+        }
+
+        if !idxs.is_empty() {
+            Some(idxs)
+        } else {
+            None
+        }
     }
 }
