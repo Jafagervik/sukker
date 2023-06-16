@@ -193,24 +193,28 @@ where
         Self::new(data, (c2, r1)).unwrap()
     }
 
-    /// Blocked matmul if you don't have any SIMD intrinsincts
+    // Blocked matmul if you don't have any SIMD intrinsincts
+    // https://csapp.cs.cmu.edu/public/waside/waside-blocking.pdf
+    //
+    // Modification involves transposing the B matrix, at the cost
+    // of increased space complexity, but better cache hit rate
     fn blocked_matmul(&self, other: &Self, block_size: usize) -> Self {
         let N = self.nrows;
+
+        let en = block_size * (N / block_size);
 
         let mut data = vec![T::zero(); N * N];
 
         let t_other = other.transpose_copy();
 
-        for ii in 0..N {
-            for jj in 0..N {
-                for kk in 0..N {
-                    for i in (ii - 1) * block_size..ii * block_size {
-                        for j in (jj - 1) * block_size..jj * block_size {
-                            data[at!(i, j, N)] = ((kk - 1) * block_size..kk * block_size)
-                                .into_par_iter()
-                                .map(|k| self.at(i, k) * t_other.at(j, k))
-                                .sum();
-                        }
+        for kk in (0..N).step_by(en) {
+            for jj in (0..N).step_by(en) {
+                for i in 0..N {
+                    for j in jj..jj + block_size {
+                        data[at!(i, j, N)] = (kk..kk + block_size)
+                            .into_par_iter()
+                            .map(|k| self.at(i, k) * t_other.at(j, k))
+                            .sum();
                     }
                 }
             }

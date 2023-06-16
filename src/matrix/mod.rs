@@ -2019,11 +2019,10 @@ where
         Ok(self.matmul_helper(other))
     }
 
-    /// Shorthand method for matmul 
+    /// Shorthand method for matmul
     pub fn mm(&self, other: &Self) -> Result<Self, MatrixError> {
         self.matmul(other)
     }
-    
 
     /// Get's the determinat of a N x N matrix
     ///
