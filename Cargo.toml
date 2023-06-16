@@ -28,6 +28,10 @@ criterion = "0.5.1"
 name = "matmul_benches"
 harness = false
 
+[[bench]]
+name = "blocked_matmul_benches"
+harness = false
+
 
 [[bench]]
 name = "sparse_matmul"
