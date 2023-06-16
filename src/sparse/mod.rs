@@ -20,6 +20,7 @@ mod helper;
 use helper::*;
 
 use std::fmt::Display;
+use std::fs;
 use std::{collections::HashMap, error::Error, marker::PhantomData, str::FromStr};
 
 use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
@@ -72,6 +73,42 @@ where
             writeln!(f);
         }
         writeln!(f, "\ndtype = {}", std::any::type_name::<T>())
+    }
+}
+
+impl<'a, T> FromStr for SparseMatrix<'a, T>
+where
+    T: MatrixElement,
+    <T as FromStr>::Err: Error + 'static,
+{
+    type Err = anyhow::Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // Parse the input string and construct the matrix dynamically
+        let data = s
+            .trim()
+            .lines()
+            .skip(1)
+            .map(|l| {
+                let entry: Vec<&str> = l.split_whitespace().collect();
+
+                let row = entry[0].parse::<usize>().unwrap();
+                let col = entry[1].parse::<usize>().unwrap();
+                let val = entry[2].parse::<T>().unwrap();
+
+                ((row, col), val)
+            })
+            .collect::<SparseMatrixData<T>>();
+
+        let dims = s
+            .trim()
+            .lines()
+            .nth(0)
+            .unwrap()
+            .split_whitespace()
+            .map(|e| e.parse::<usize>().unwrap())
+            .collect::<Vec<usize>>();
+
+        Ok(Self::init(data, (dims[0], dims[1])))
     }
 }
 
@@ -278,6 +315,25 @@ where
             .collect();
 
         Ok(Self::init(data, shape))
+    }
+
+    /// Parses from file, but will return a default sparse matrix if nothing is given
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// // let m: SparseMatrix<f32> = Matrix::from_file("../../test.txt").unwrap();
+    ///
+    /// // m.print(4);
+    /// ```
+    pub fn from_file(path: &'static str) -> Result<Self, MatrixError> {
+        let data =
+            fs::read_to_string(path).map_err(|_| MatrixError::MatrixFileReadError(path).into())?;
+
+        data.parse::<Self>()
+            .map_err(|_| MatrixError::MatrixParseError.into())
     }
 
     /// Gets an element from the sparse matrix.

@@ -5,6 +5,7 @@
 //! This file is sub 1500 lines and acts as the core file
 
 mod helper;
+mod optim;
 
 use helper::*;
 
@@ -1796,6 +1797,8 @@ where
     /// This is done by performing a matrix multiplication
     /// several time on self and the result of mat.exp(i-1).
     ///
+    /// If matrix is not in form NxN, this function returns None
+    ///
     /// Examples
     ///
     /// ```
@@ -1803,16 +1806,20 @@ where
     ///
     /// let a = Matrix::<i32>::init(2, (2,2));
     ///
-    /// let res = a.exp(3);
+    /// let res = a.exp(3).unwrap();
     ///
     /// assert_eq!(res.all(|&e| e == 32), true);
     /// ```
-    pub fn exp(&self, n: usize) -> Self {
+    pub fn exp(&self, n: usize) -> Option<Self> {
+        if self.nrows != self.ncols {
+            return None;
+        }
+
         let mut res = self.clone();
 
         (0..n - 1).for_each(|_| res = res.matmul(self).unwrap());
 
-        res
+        Some(res)
     }
 
     /// Adds a matrix in-place to a matrix
@@ -2011,6 +2018,12 @@ where
 
         Ok(self.matmul_helper(other))
     }
+
+    /// Shorthand method for matmul 
+    pub fn mm(&self, other: &Self) -> Result<Self, MatrixError> {
+        self.matmul(other)
+    }
+    
 
     /// Get's the determinat of a N x N matrix
     ///
