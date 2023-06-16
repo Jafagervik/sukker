@@ -1,6 +1,6 @@
-use std::{error::Error, str::FromStr};
+use std::{error::Error, mem::size_of, str::FromStr};
 
-use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rayon::prelude::*;
 
 use crate::{at, Matrix, MatrixElement};
 
@@ -13,13 +13,18 @@ pub fn swap(lhs: &mut usize, rhs: &mut usize) {
 // simd
 impl<'a, T> Matrix<'a, T>
 where
-    T: MatrixElement,
+    T: MatrixElement + 'a,
     <T as FromStr>::Err: Error + 'static,
     Vec<T>: IntoParallelIterator,
     Vec<&'a T>: IntoParallelRefIterator<'a>,
 {
     pub fn determinant_helper(&self) -> T {
-        unimplemented!()
+        match self.nrows {
+            1 => self.at(0, 0),
+            2 => Self::det_2x2(self),
+            3 => Self::det_3x3(self),
+            n => Self::det_nxn(self.data.clone(), n),
+        }
     }
 
     // General helper function calling out to other matmuls based on target architecture
@@ -32,20 +37,91 @@ where
             _ => {}
         };
 
+        // Target Detection
+
+        #[cfg(any(target_arch = "x86", target_arch = "x86-64"))]
+        {
+            if is_x86_feature_detected!("avx2") {
+                unsafe { self.avx_matmul(other) }
+            } else if is_x86_feature_detected!("sse") {
+                self.blocked_matmul(other, 4)
+            }
+        }
+
         if self.shape() == other.shape() {
-            // Calculated from ...
-            let blck_size = 4;
+            // Calculated from lowest possible size where
+            // nrows & blck_size == 0.
+            // Block size will never be more than 50
+            let blck_size = (3..=50)
+                .collect::<Vec<_>>()
+                .into_par_iter()
+                .find_first(|b| self.nrows % b == 0)
+                .unwrap();
 
             return self.blocked_matmul(other, blck_size);
         }
 
-        if is_x86_feature_detected!("avx") {
-            self.naive_matmul(other)
-        } else if is_x86_feature_detected!("sse") {
-            self.blocked_matmul(other, 4)
-        } else {
-            self.naive_matmul(other)
+        self.naive_matmul(other)
+    }
+
+    // ===================================================
+    //           Determinant
+    // ===================================================
+
+    #[inline(always)]
+    fn det_2x2(&self) -> T {
+        self.at(0, 0) * self.at(1, 1) - self.at(0, 1) * self.at(1, 0)
+    }
+
+    #[inline(always)]
+    fn det_3x3(&self) -> T {
+        let a = self.at(0, 0);
+        let b = self.at(0, 1);
+        let c = self.at(0, 2);
+        let d = self.at(1, 0);
+        let e = self.at(1, 1);
+        let f = self.at(1, 2);
+        let g = self.at(2, 0);
+        let h = self.at(2, 1);
+        let i = self.at(2, 2);
+
+        a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g)
+    }
+
+    fn det_nxn(matrix: Vec<T>, n: usize) -> T {
+        if n == 1 {
+            return matrix[0];
         }
+
+        let mut det = T::zero();
+        let mut sign = T::one();
+        // println!("{:?}", matrix);
+
+        for col in 0..n {
+            let sub_det = Self::det_nxn(Self::submatrix(matrix.clone(), n, 0, col), n - 1);
+
+            det += sign * matrix[col] * sub_det;
+
+            sign *= -T::one();
+        }
+
+        det
+    }
+
+    fn submatrix(matrix: Vec<T>, n: usize, row_to_remove: usize, col_to_remove: usize) -> Vec<T> {
+        matrix
+            .par_iter()
+            .enumerate()
+            .filter_map(|(i, &value)| {
+                let row = i / n;
+                let col = i % n;
+                if row != row_to_remove && col != col_to_remove {
+                    Some(value)
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 
     // ===================================================
@@ -119,6 +195,63 @@ where
             }
         }
         Self::new(data, (c2, r1)).unwrap()
+    }
+
+    /// AVX matmul for the IEEE754 Double Precision Floating Point Datatype
+    /// https://www.akkadia.org/drepper/cpumemory.pdf
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    #[target_feature(enable = "avx2")]
+    unsafe fn avx_matmul(&self, other: &Self) -> Self {
+        #[cfg(target_arch = "x86")]
+        use std::arch::x86::_mm256_add_epi64;
+        #[cfg(target_arch = "x86_64")]
+        use std::arch::x86_64::{
+            __m128d, _mm256_add_epi64, _mm_add_pd, _mm_load_pd, _mm_mul_pd, _mm_prefetch,
+            _mm_store_pd, _mm_unpacklo_pd, _MM_HINT_NTA,
+        };
+
+        // let N = self.nrows;
+        //
+        // let res = [0.0; 4];
+        // let mul1 = [0.0; 4];
+        // let mul2 = [0.0; 4];
+        //
+        // let CLS = 420;
+        //
+        // let SM = CLS / size_of::<f64>();
+        //
+        // let mut rres: *const f64;
+        // let mut rmul1: *const f64;
+        // let mut rmul2: *const f64;
+        //
+        // for i in (0..N).step_by(SM) {
+        //     for j in (0..N).step_by(SM) {
+        //         for k in (0..N).step_by(SM) {
+        //             for i2 in 0..SM {
+        //                 _mm_prefetch(&rmul1[8]);
+        //
+        //                 for k2 in 0..SM {
+        //                     rmul2 = 1.0;
+        //
+        //                     // load m1d
+        //                     let m1d: __m128d = _mm_load_pd(rmul1);
+        //
+        //                     for j2 in (0..SM).step_by(2) {
+        //                         let m2: __m128d = _mm_load_pd(rmul2);
+        //                         let r2: __m128d = _mm_load_pd(rres);
+        //                         _mm_store_pd(rres, _mm_add_pd(_mm_mul_pd(m2, m1d), r2));
+        //
+        //                         // Inner most computations
+        //                     }
+        //
+        //                     rmul2 += N as f64;
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
+
+        Self::default()
     }
 
     /// Blocked matmul if you don't have any SIMD intrinsincts

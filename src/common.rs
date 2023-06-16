@@ -65,6 +65,7 @@ where
 {
     fn log(&self, base: T) -> Self;
     fn ln(&self) -> Self;
+    fn sqrt(&self) -> Self;
     fn sin(&self) -> Self;
     fn tan(&self) -> Self;
     fn cos(&self) -> Self;

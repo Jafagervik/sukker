@@ -1,4 +1,4 @@
-//! Making working with matrices in rust easier!
+//! Makin with matrices in rust easier!
 //!
 //! For now, only basic operations are allowed, but more are to be added
 //!
@@ -325,6 +325,19 @@ where
 
         // Safe to do since the library is setting the size
         Self::new(data, (size, size)).unwrap()
+    }
+
+    /// Produce an identity matrix in the same shape as
+    /// an already existent matrix
+    ///
+    /// Examples
+    ///
+    /// ```
+    ///
+    ///
+    /// ```
+    pub fn eye_like(matrix: &Self) -> Self {
+        Self::eye(matrix.nrows)
     }
 
     /// Identity is same as eye, just for nerds
@@ -1336,6 +1349,30 @@ where
         Self::new(data, self.shape()).unwrap()
     }
 
+    /// Takes the square root of each element in a matrix.
+    /// If some elements are negative, these will be kept the same
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, LinAlgFloats};
+    ///
+    /// let matrix: Matrix<f64> = Matrix::init(9.0, (3,3));
+    ///
+    /// let res = matrix.sqrt();
+    ///
+    /// assert_eq!(res.all(|&e| e == 3.0), true);
+    /// ```
+    fn sqrt(&self) -> Self {
+        let data: Vec<T> = self
+            .data
+            .par_iter()
+            .map(|&e| if e > T::zero() { e.sqrt() } else { e })
+            .collect();
+
+        Self::new(data, self.shape()).unwrap()
+    }
+
     /// Gets sin of every value
     ///
     /// # Examples
@@ -1976,7 +2013,20 @@ where
     }
 
     /// Get's the determinat of a N x N matrix
-    fn determinant(&self) -> Option<T> {
+    ///
+    /// Examples
+    ///
+    /// ```
+    /// use sukker::Matrix;
+    ///
+    /// let mat: Matrix<i32> = Matrix::new(vec![1,3,5,9,1,3,1,7,4,3,9,7,5,2,0,9], (4,4)).unwrap();
+    ///
+    ///
+    /// let res = mat.determinant().unwrap();
+    ///
+    /// assert_eq!(res, -376);
+    /// ```
+    pub fn determinant(&self) -> Option<T> {
         if self.nrows != self.ncols {
             return None;
         }
@@ -1984,21 +2034,29 @@ where
         Some(self.determinant_helper())
     }
 
+    /// Shorthand call for `determinant`
+    pub fn det(&self) -> Option<T> {
+        self.determinant()
+    }
+
     /// Finds the inverse of a matrix if possible
     ///
+    /// Definition: AA^-1 = A^-1A = I
+    ///
     /// Examples
-    fn inverse(&self) -> Option<Self> {
-        // An inverse does not exist for a matrix with a zero-determinant
+    ///
+    /// ```
+    /// ```
+    pub fn inverse(&self) -> Option<Self> {
+        if self.nrows == self.ncols && self.determinant().unwrap() == T::zero() {
+            return None;
+        }
 
-        unimplemented!()
+        let mut inverse = Self::zeros_like(self);
 
-        // if self.determinant() == 0 {
-        //     return None;
-        // }
-        //
-        // let mut inv = Self::zeros_like(self);
-        //
-        // Some(inv)
+        let identity_mat = Self::eye_like(self);
+
+        Some(inverse)
     }
 
     /// Transpose a matrix in-place
