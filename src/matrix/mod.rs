@@ -643,6 +643,7 @@ where
     ///
     /// assert_eq!(matrix.at(1,2), val);
     /// ```
+    #[inline(always)]
     pub fn at(&self, i: usize, j: usize) -> T {
         self.data[at!(i, j, self.ncols)]
     }
@@ -1926,6 +1927,23 @@ where
         }
 
         Some(self.determinant_helper())
+    }
+
+    /// Finds the inverse of a matrix if possible
+    ///
+    /// Examples
+    fn inverse(&self) -> Option<Self> {
+        // An inverse does not exist for a matrix with a zero-determinant
+
+        unimplemented!()
+
+        // if self.determinant() == 0 {
+        //     return None;
+        // }
+        //
+        // let mut inv = Self::zeros_like(self);
+        //
+        // Some(inv)
     }
 
     /// Transpose a matrix in-place

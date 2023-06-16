@@ -21,11 +21,19 @@ where
     Vec<&'a T>: IntoParallelRefIterator<'a>,
 {
     pub fn determinant_helper(&self) -> T {
-        T::zero()
+        unimplemented!()
     }
 
     // General helper function calling out to other matmuls based on target architecture
     pub fn matmul_helper(&self, other: &Self) -> Self {
+        match (self.shape(), other.shape()) {
+            ((1, 2), (2, 1)) => return self.onetwo_by_twoone(other),
+            ((2, 2), (2, 1)) => return self.twotwo_by_twoone(other),
+            ((1, 2), (2, 2)) => return self.onetwo_by_twotwo(other),
+            ((2, 2), (2, 2)) => return self.twotwo_by_twotwo(other),
+            _ => {}
+        };
+
         if self.shape() == other.shape() {
             // Calculated from ...
             let blck_size = 4;
@@ -41,6 +49,53 @@ where
             self.naive_matmul(other)
         }
     }
+
+    // ===================================================
+    //           Extremely specific optimizations
+    // ===================================================
+
+    // 1x2 @ 2x1 matrix
+    #[inline(always)]
+    fn onetwo_by_twoone(&self, other: &Self) -> Self {
+        let a = self.at(0, 0) * other.at(1, 0) + self.at(0, 1) * other.at(1, 1);
+
+        Self::new(vec![a], (1, 1)).unwrap()
+    }
+
+    // 2x2 @ 2x1 matrix
+    #[inline(always)]
+    fn twotwo_by_twoone(&self, other: &Self) -> Self {
+        let a = self.at(0, 0) * other.at(1, 0) + self.at(0, 1) * other.at(1, 1);
+        let b = self.at(1, 0) * other.at(1, 0) + self.at(1, 1) * other.at(1, 1);
+
+        Self::new(vec![a, b], (2, 1)).unwrap()
+    }
+
+    // 1x2 @ 2x2 matrix
+    #[inline(always)]
+    fn onetwo_by_twotwo(&self, other: &Self) -> Self {
+        let a = self.at(1, 0) * other.at(0, 0) + self.at(1, 1) * other.at(0, 1);
+        let b = self.at(1, 0) * other.at(1, 0) + self.at(1, 1) * other.at(1, 1);
+
+        Self::new(vec![a, b], (1, 2)).unwrap()
+    }
+
+    // 2x2 @ 2x2 matrix
+    #[inline(always)]
+    fn twotwo_by_twotwo(&self, other: &Self) -> Self {
+        let a = self.at(0, 0) * other.at(0, 0) + self.at(1, 0) * other.at(1, 0);
+        let b = self.at(0, 0) * other.at(0, 1) + self.at(0, 1) * other.at(1, 1);
+        let c = self.at(1, 0) * other.at(0, 0) + self.at(1, 1) * other.at(1, 0);
+        let d = self.at(1, 0) * other.at(1, 0) + self.at(1, 1) * other.at(1, 1);
+
+        Self::new(vec![a, b, c, d], (2, 2)).unwrap()
+    }
+
+    // ========================================================================
+    //
+    //    General solutions for matrix multiplication
+    //
+    // ========================================================================
 
     /// Naive matmul if you don't have any SIMD intrinsincts
     fn naive_matmul(&self, other: &Self) -> Self {
