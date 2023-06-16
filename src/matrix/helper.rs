@@ -51,7 +51,7 @@ where
             let blck_size = (3..=50)
                 .collect::<Vec<_>>()
                 .into_par_iter()
-                .find_first(|b| self.nrows % b == 0)
+                .find_last(|b| self.nrows % b == 0)
                 .unwrap();
 
             return self.blocked_matmul(other, blck_size);
@@ -127,7 +127,6 @@ where
     // 1x2 @ 2x1 matrix
     #[inline(always)]
     fn onetwo_by_twoone(&self, other: &Self) -> Self {
-        println!("12 21");
         let a = self.at(0, 0) * other.at(0, 0) + self.at(0, 1) * other.at(1, 0);
 
         Self::new(vec![a], (1, 1)).unwrap()
@@ -136,7 +135,6 @@ where
     // 2x2 @ 2x1 matrix
     #[inline(always)]
     fn twotwo_by_twoone(&self, other: &Self) -> Self {
-        println!("22 21");
         let a = self.at(0, 0) * other.at(0, 0) + self.at(0, 1) * other.at(1, 0);
         let b = self.at(1, 0) * other.at(0, 0) + self.at(1, 1) * other.at(1, 0);
 
@@ -146,7 +144,6 @@ where
     // 1x2 @ 2x2 matrix
     #[inline(always)]
     fn onetwo_by_twotwo(&self, other: &Self) -> Self {
-        println!("12 22");
         let a = self.at(0, 0) * other.at(0, 0) + self.at(0, 1) * other.at(1, 0);
         let b = self.at(0, 0) * other.at(1, 0) + self.at(0, 1) * other.at(1, 1);
 
@@ -156,8 +153,6 @@ where
     // 2x2 @ 2x2 matrix
     #[inline(always)]
     fn twotwo_by_twotwo(&self, other: &Self) -> Self {
-        println!("22 22");
-
         let a = self.at(0, 0) * other.at(0, 0) + self.at(1, 0) * other.at(1, 0);
         let b = self.at(0, 0) * other.at(0, 1) + self.at(0, 1) * other.at(1, 1);
         let c = self.at(1, 0) * other.at(0, 0) + self.at(1, 1) * other.at(1, 0);
