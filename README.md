@@ -14,15 +14,15 @@ Parallelized using rayon with support for many common datatypes,
 sukker tries to make matrix operations easier for the user, 
 while still giving you as the user the performance you deserve.
 
-Basic operations on sparse matrices are also supported now
+Regular matrices have many features already ready, while 
+Sparse ones have most of them. Whenever you want to switch from 
+one to the other, just call `from_dense`, or `from_sparse` to
+quickly and easily convert!
 
 Need a feature? Please let me/us know!
 
-
-## Why V2 already?
-
-With added error handling and a good amount of rewriting, a major version was due 
-to avoid any confusion.
+Even have custom declarative macros to create hashmap for your
+sparse matrices!
 
 ## Examples
 
@@ -53,12 +53,12 @@ use std::collections::HashMap;
 use sukker::{SparseMatrix, SparseMatrixData};
 
 fn main() {
-    let mut indexes: SparseMatrixData<f64> = HashMap::new();
-
-    indexes.insert((0, 1), 2.0);
-    indexes.insert((1, 0), 4.0);
-    indexes.insert((2, 3), 6.0);
-    indexes.insert((3, 3), 8.0);
+    let indexes: SparseMatrixData<f64> = smd![
+        ((0, 1), 2.0), 
+        ((1, 0), 4.0), 
+        ((2, 3), 6.0), 
+        ((3, 3), 8.0)
+    ];
 
     let sparse = SparseMatrix::<f64>::init(indexes, (4, 4));
 
@@ -75,9 +75,10 @@ Full API documentation can be found [here](https://docs.rs/sukker/latest/sukker/
 ## Features 
 - [X] Easy to use!
 - [X] Blazingly fast
-- [X] Multiple features on dense matrices
+- [X] Linear Algebra module fully functional on f32 and f64
+- [X] Optimized matrix multiplication 
 - [X] Serde support 
 - [X] Support for all signed numeric datatypes 
 - [X] Can be sent over threads
-- [X] Sparse matrices with matrix multiplications
+- [X] Sparse matrices 
 

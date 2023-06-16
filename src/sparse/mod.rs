@@ -27,7 +27,7 @@ use std::{collections::HashMap, error::Error, marker::PhantomData, str::FromStr}
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{at, smd, LinAlgFloats, Matrix, MatrixElement, MatrixError, Shape};
+use crate::{at, smd, LinAlgFloats, Matrix, MatrixElement, MatrixError, Operation, Shape};
 
 /// SparseMatrixData represents the datatype used to store information
 /// about non-zero values in a general matrix.

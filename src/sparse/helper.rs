@@ -4,15 +4,7 @@ use std::{collections::HashMap, error::Error, str::FromStr};
 
 use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
-use crate::{MatrixElement, MatrixError, SparseMatrix, SparseMatrixData};
-
-// Enum for operations
-pub enum Operation {
-    ADD,
-    SUB,
-    MUL,
-    DIV,
-}
+use crate::{MatrixElement, MatrixError, Operation, SparseMatrix, SparseMatrixData};
 
 pub fn swap(lhs: &mut usize, rhs: &mut usize) {
     let temp = *lhs;
