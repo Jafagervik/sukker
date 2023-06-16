@@ -4,7 +4,7 @@ use sukker::{SparseMatrix, SparseMatrixData};
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 // Benchmark for matrix multiplication
-fn sparse_matmul_bench(c: &mut Criterion) {
+fn nn_sparse_matmul_bench(c: &mut Criterion) {
     let mut indexes: SparseMatrixData<f64> = HashMap::new();
 
     indexes.insert((0, 1), 2.0);
@@ -22,7 +22,7 @@ fn sparse_matmul_bench(c: &mut Criterion) {
     indexes.insert((3, 8), 8.0);
     indexes.insert((0, 9), 8.0);
 
-    let x = black_box(SparseMatrix::<f64>::init(indexes, (999, 1000)));
+    let x = black_box(SparseMatrix::<f64>::init(indexes, (1000, 1000)));
 
     let mut indexes2: SparseMatrixData<f64> = HashMap::new();
 
@@ -41,10 +41,12 @@ fn sparse_matmul_bench(c: &mut Criterion) {
     indexes2.insert((7, 0), 8.0);
     indexes2.insert((9, 7), 6.0);
 
-    let y = black_box(SparseMatrix::<f64>::init(indexes2, (1000, 999)));
+    let y = black_box(SparseMatrix::<f64>::init(indexes2, (1000, 1000)));
 
-    c.bench_function("sparse matmul", |b| b.iter(|| x.matmul_sparse(&y).unwrap()));
+    c.bench_function(" NxN @ NxN sparse matmul", |b| {
+        b.iter(|| x.matmul_sparse(&y).unwrap())
+    });
 }
 
-criterion_group!(benches, sparse_matmul_bench);
+criterion_group!(benches, nn_sparse_matmul_bench);
 criterion_main!(benches);

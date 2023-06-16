@@ -37,3 +37,6 @@ harness = false
 name = "sparse_matmul"
 harness = false
 
+[[bench]]
+name = "nn_sparse_matmul"
+harness = false

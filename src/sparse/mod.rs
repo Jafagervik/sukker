@@ -378,6 +378,7 @@ where
     /// assert_eq!(sparse.at(0,0), 1);
     /// assert_eq!(sparse.at(1,0), 0);
     /// ```
+    #[inline(always)]
     pub fn at(&self, i: usize, j: usize) -> T {
         match self.data.get(&(i, j)) {
             None => T::zero(),

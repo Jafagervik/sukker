@@ -102,10 +102,34 @@ where
     //     Sparse Matrix Mulitplication helpers
     // =============================================================
 
+    // For now these algorithms are the same since we're using
+    // hashmaps
+
     // For nn x nn
     #[doc(hidden)]
     pub fn matmul_sparse_nn(&self, other: &Self) -> Self {
-        self.matmul_sparse_mnnp(other)
+        // For now, more or less same as mn np
+        let N = self.nrows;
+
+        let data: SparseMatrixData<T> = (0..N)
+            .flat_map(|i| (0..N).map(move |j| (i, j)))
+            .collect::<Vec<(usize, usize)>>()
+            .into_par_iter()
+            .filter_map(|(i, j)| {
+                if self.at(i, j) == T::zero() {
+                    return None;
+                }
+
+                let result = (0..N)
+                    .into_par_iter()
+                    .map(|k| self.at(i, j) * other.at(j, k))
+                    .sum();
+
+                Some(((i, j), result))
+            })
+            .collect();
+
+        Self::init(data, (N, N))
     }
 
     // mn x np
@@ -115,14 +139,13 @@ where
         let y = self.ncols;
         let z = other.ncols;
 
-        let mut data: SparseMatrixData<T> = HashMap::new();
-
-        for i in 0..x {
-            for j in 0..y {
-                // We notice that most times, we wont calculate the new sparse matrix
-                // so therefore we do an early continue if this is the case
+        let data: SparseMatrixData<T> = (0..x)
+            .flat_map(|i| (0..y).map(move |j| (i, j)))
+            .collect::<Vec<(usize, usize)>>()
+            .into_par_iter()
+            .filter_map(|(i, j)| {
                 if self.at(i, j) == T::zero() {
-                    continue;
+                    return None;
                 }
 
                 let result = (0..z)
@@ -130,9 +153,9 @@ where
                     .map(|k| self.at(i, j) * other.at(j, k))
                     .sum();
 
-                data.insert((i, j), result);
-            }
-        }
+                Some(((i, j), result))
+            })
+            .collect();
 
         Self::init(data, (x, z))
     }
