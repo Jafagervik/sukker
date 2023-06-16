@@ -210,6 +210,8 @@ where
                             .into_par_iter()
                             .map(|k| self.at(i, k) * t_other.at(j, k))
                             .sum();
+
+                        // println!("i {} j {} val {}", i, j, data[at!(i, j, N)]);
                     }
                 }
             }
