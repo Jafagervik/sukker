@@ -1,6 +1,6 @@
 [package]
 name = "sukker"
-version = "2.0.3"
+version = "2.0.4"
 edition = "2021"
 authors = ["Joergen Aleksander Fagervik <jorgenafagervik@gmail.com>"]
 license = "MIT OR Apache-2.0"
@@ -9,8 +9,9 @@ readme = "README.md"
 description = "Linear Algebra and Matrices made easy!"
 repository = "https://github.com/Jafagervik/sukker.git"
 
-keywords = ["ai","matrix",  "numpy"]
+keywords = ["ai","matrix",  "numpy", "linalg", "vector"]
 categories = ["mathematics", "science"]
+
 
 [dependencies]
 anyhow = "1.0.71"
@@ -25,6 +26,10 @@ criterion = "0.5.1"
 
 [[bench]]
 name = "matmul_benches"
+harness = false
+
+[[bench]]
+name = "blocked_matmul_benches"
 harness = false
 
 

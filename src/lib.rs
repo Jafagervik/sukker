@@ -9,3 +9,6 @@ pub use constants::*;
 pub use error::*;
 pub use matrix::*;
 pub use sparse::*;
+
+#[macro_use]
+pub mod macros;

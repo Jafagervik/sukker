@@ -30,16 +30,18 @@ to avoid any confusion.
 ### Dens Matrices 
 
 ```rust 
-use sukker::Matrix;
+use sukker::{LinAlgFloats, Matrix};
 
 fn main() {
-    let a = Matrix::<f32>::randomize((7,56));
-    let b = Matrix::<f32>::randomize((56,8));
+    let a = Matrix::<f32>::randomize((8, 56));
+    let b = Matrix::<f32>::randomize((56, 8));
 
     let c = a.matmul(&b).unwrap();
 
+    let res = c.sin().exp(3).unwrap().pow(2).add_val(4.0).abs();
+
     // To print this beautiful matrix:
-    c.print(5);
+    res.print(5);
 }
 ```
 
