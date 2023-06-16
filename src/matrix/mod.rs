@@ -19,12 +19,12 @@ use std::{
 };
 
 use itertools::{iproduct, Itertools};
-use num_traits::{pow, sign::abs, Float};
+use num_traits::{pow, real::Real, sign::abs, Float};
 use rand::Rng;
 use rayon::prelude::*;
 use std::iter::Sum;
 
-use crate::{at, MatrixElement, MatrixError, MatrixMathFloats, SparseMatrix};
+use crate::{at, LinAlgFloats, LinAlgReals, MatrixElement, MatrixError, SparseMatrix};
 
 /// Shape represents the dimension size
 /// of the matrix as a tuple of usize
@@ -1141,9 +1141,9 @@ where
             return T::zero();
         }
 
-        let mut size: T = T::zero();
+        // let mut size: T = T::zero();
 
-        self.data.iter().for_each(|_| size += T::one());
+        let size = self.data.par_iter().map(|_| T::one()).sum();
 
         let tot: T = self.data.par_iter().copied().sum::<T>();
 
@@ -1292,7 +1292,21 @@ where
     }
 }
 
-impl<'a, T> MatrixMathFloats<'a, T> for Matrix<'a, T>
+impl<'a, T> LinAlgReals<'a, T> for Matrix<'a, T>
+where
+    T: MatrixElement + Real + 'a,
+    <T as FromStr>::Err: Error + 'static,
+    Vec<T>: IntoParallelIterator,
+    Vec<&'a T>: IntoParallelRefIterator<'a>,
+{
+    fn log(&self, base: T) -> Self {
+        let data: Vec<T> = self.data.par_iter().map(|&e| e.log(base)).collect();
+
+        Self::new(data, self.shape()).unwrap()
+    }
+}
+
+impl<'a, T> LinAlgFloats<'a, T> for Matrix<'a, T>
 where
     T: MatrixElement + Float + 'a,
     <T as FromStr>::Err: Error + 'static,

@@ -8,7 +8,7 @@ use std::{
 };
 
 use num_traits::{
-    sign::Signed, Float, Num, NumAssign, NumAssignOps, NumAssignRef, NumOps, One, Zero,
+    real::Real, sign::Signed, Float, Num, NumAssign, NumAssignOps, NumAssignRef, NumOps, One, Zero,
 };
 use rand::distributions::uniform::SampleUniform;
 use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator};
@@ -56,7 +56,7 @@ pub trait MatrixMathCommon {}
 /// Some operations can only be done on floats,
 /// and these can be implemented both for Matrix,
 /// and sparse matrix
-pub trait MatrixMathFloats<'a, T>
+pub trait LinAlgFloats<'a, T>
 where
     T: MatrixElement + Float + 'a,
     <T as FromStr>::Err: Error + 'static,
@@ -74,4 +74,17 @@ where
     fn neg(&self) -> Self;
     fn get_eigenvalues(&self) -> Option<Vec<T>>;
     fn get_eigenvectors(&self) -> Option<Vec<T>>;
+}
+
+/// Some operations can only be done on floats,
+/// and these can be implemented both for Matrix,
+/// and sparse matrix
+pub trait LinAlgReals<'a, T>
+where
+    T: MatrixElement + Real + 'a,
+    <T as FromStr>::Err: Error + 'static,
+    Vec<T>: IntoParallelIterator,
+    Vec<&'a T>: IntoParallelRefIterator<'a>,
+{
+    fn log(&self, base: T) -> Self;
 }
