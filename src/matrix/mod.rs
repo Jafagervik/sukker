@@ -2046,10 +2046,35 @@ where
     /// Examples
     ///
     /// ```
+    /// use sukker::Matrix;
+    ///
+    /// let matrix = Matrix::new(vec![4,7,2,6], (2,2)).unwrap();
+    ///
+    /// // let inverse  = matrix.inverse();
+    ///
     /// ```
-    pub fn inverse(&self) -> Option<Self> {
-        if self.nrows == self.ncols && self.determinant().unwrap() == T::zero() {
+    fn inverse(&self) -> Option<Self> {
+        if self.nrows != self.ncols {
+            eprintln!("Oops");
             return None;
+        }
+
+        if self.determinant().unwrap() == T::zero() {
+            return None;
+        }
+
+        // 2x2 matrix is a special case
+        if self.shape() == (2, 2) {
+            let a = self.at(0, 0);
+            let b = self.at(0, 1);
+            let c = self.at(1, 0);
+            let d = self.at(1, 1);
+
+            let mut mat = Self::new(vec![d, -b, -c, a], self.shape()).unwrap();
+
+            mat.mul_val_self(T::one() / (a * d - b * c));
+
+            return Some(mat);
         }
 
         let mut inverse = Self::zeros_like(self);
