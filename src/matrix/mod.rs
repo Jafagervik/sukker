@@ -19,12 +19,12 @@ use std::{
 };
 
 use itertools::{iproduct, Itertools};
-use num_traits::{pow, real::Real, sign::abs, Float};
+use num_traits::{pow, sign::abs, Float};
 use rand::Rng;
 use rayon::prelude::*;
 use std::iter::Sum;
 
-use crate::{at, LinAlgFloats, LinAlgReals, MatrixElement, MatrixError, SparseMatrix};
+use crate::{at, LinAlgFloats, MatrixElement, MatrixError, SparseMatrix};
 
 /// Shape represents the dimension size
 /// of the matrix as a tuple of usize
@@ -1292,20 +1292,6 @@ where
     }
 }
 
-impl<'a, T> LinAlgReals<'a, T> for Matrix<'a, T>
-where
-    T: MatrixElement + Real + 'a,
-    <T as FromStr>::Err: Error + 'static,
-    Vec<T>: IntoParallelIterator,
-    Vec<&'a T>: IntoParallelRefIterator<'a>,
-{
-    fn log(&self, base: T) -> Self {
-        let data: Vec<T> = self.data.par_iter().map(|&e| e.log(base)).collect();
-
-        Self::new(data, self.shape()).unwrap()
-    }
-}
-
 impl<'a, T> LinAlgFloats<'a, T> for Matrix<'a, T>
 where
     T: MatrixElement + Float + 'a,
@@ -1318,9 +1304,12 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sukker::{Matrix, MatrixMathFloats};
+    /// use sukker::{Matrix, LinAlgFloats};
     ///
-    /// let matrix = Matrix::init(2.0, (2,2));
+    /// let matrix = Matrix::init(10.0, (2,2));
+    /// let result = matrix.log(10.0);
+    ///
+    /// assert_eq!(result.all(|&e| e == 1.0), true);
     ///
     /// ```
     fn log(&self, base: T) -> Self {
@@ -1334,11 +1323,12 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sukker::Matrix;
+    /// use sukker::{Matrix, LinAlgFloats};
     /// use sukker::constants::EF64;
     ///
     /// let matrix: Matrix<f64> = Matrix::init(EF64, (2,2));
     ///
+    /// let res = matrix.ln();
     /// ```
     fn ln(&self) -> Self {
         let data: Vec<T> = self.data.par_iter().map(|&e| e.ln()).collect();
@@ -1351,11 +1341,11 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sukker::Matrix;
-    /// use sukker::constants::EF32;
+    /// use sukker::{Matrix, LinAlgFloats};
     ///
-    /// let matrix = Matrix::init(EF32, (2,2));
+    /// let matrix = Matrix::init(1.0, (2,2));
     ///
+    /// let res = matrix.sin();
     /// ```
     fn sin(&self) -> Self {
         let data: Vec<T> = self.data.par_iter().map(|&e| e.sin()).collect();
@@ -1368,11 +1358,12 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sukker::Matrix;
+    /// use sukker::{Matrix, LinAlgFloats};
     /// use sukker::constants::EF32;
     ///
     /// let matrix = Matrix::init(EF32, (2,2));
     ///
+    /// let res = matrix.cos();
     /// ```
     fn cos(&self) -> Self {
         let data: Vec<T> = self.data.par_iter().map(|&e| e.cos()).collect();
@@ -1385,11 +1376,12 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sukker::Matrix;
+    /// use sukker::{Matrix, LinAlgFloats};
     /// use sukker::constants::EF32;
     ///
     /// let matrix = Matrix::init(EF32, (2,2));
     ///
+    /// let res = matrix.tan();
     /// ```
     fn tan(&self) -> Self {
         let data: Vec<T> = self.data.par_iter().map(|&e| e.tan()).collect();
@@ -1402,14 +1394,15 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sukker::Matrix;
+    /// use sukker::{Matrix, LinAlgFloats};
     /// use sukker::constants::EF32;
     ///
     /// let matrix = Matrix::init(EF32, (2,2));
     ///
+    /// let res = matrix.sinh();
     /// ```
     fn sinh(&self) -> Self {
-        let data: Vec<T> = self.data.par_iter().map(|&e| e.sin()).collect();
+        let data: Vec<T> = self.data.par_iter().map(|&e| e.sinh()).collect();
 
         Self::new(data, self.shape()).unwrap()
     }
@@ -1419,14 +1412,15 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sukker::Matrix;
+    /// use sukker::{Matrix, LinAlgFloats};
     /// use sukker::constants::EF32;
     ///
     /// let matrix = Matrix::init(EF32, (2,2));
     ///
+    /// let res = matrix.cosh();
     /// ```
     fn cosh(&self) -> Self {
-        let data: Vec<T> = self.data.par_iter().map(|&e| e.tanh()).collect();
+        let data: Vec<T> = self.data.par_iter().map(|&e| e.cosh()).collect();
 
         Self::new(data, self.shape()).unwrap()
     }
@@ -1436,11 +1430,12 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sukker::Matrix;
+    /// use sukker::{Matrix, LinAlgFloats};
     /// use sukker::constants::EF32;
     ///
     /// let matrix = Matrix::init(EF32, (2,2));
     ///
+    /// let res = matrix.tanh();
     /// ```
     fn tanh(&self) -> Self {
         let data: Vec<T> = self.data.par_iter().map(|&e| e.tanh()).collect();
@@ -1453,7 +1448,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sukker::{Matrix, MatrixMathFloats};
+    /// use sukker::{Matrix, LinAlgFloats};
     ///
     /// let matrix = Matrix::<f32>::ones((2,2));
     ///
@@ -1748,16 +1743,39 @@ where
     /// ```
     /// use sukker::Matrix;
     ///
-    /// let matrix = Matrix::init(20.0, (2,2));
+    /// let matrix = Matrix::init(-20.0, (2,2));
     ///
     /// let res = matrix.abs();
     ///
-    /// // assert_eq!(matrix1.get(0,0).unwrap(), 22.0);
+    /// assert_eq!(res.all(|&e| e == 20.0), true);
     /// ```
     pub fn abs(&self) -> Self {
-        let data: Vec<T> = self.data.par_iter().map(|&e| abs(e)).collect();
+        let data: Vec<T> = self.data.par_iter().map(|&e| e.abs()).collect();
 
         Self::new(data, self.shape()).unwrap()
+    }
+
+    /// Multiply a matrix with itself n number of times.
+    /// This is done by performing a matrix multiplication
+    /// several time on self and the result of mat.exp(i-1).
+    ///
+    /// Examples
+    ///
+    /// ```
+    /// use sukker::Matrix;
+    ///
+    /// let a = Matrix::<i32>::init(2, (2,2));
+    ///
+    /// let res = a.exp(3);
+    ///
+    /// assert_eq!(res.all(|&e| e == 32), true);
+    /// ```
+    pub fn exp(&self, n: usize) -> Self {
+        let mut res = self.clone();
+
+        (0..n - 1).for_each(|_| res = res.matmul(self).unwrap());
+
+        res
     }
 
     /// Adds a matrix in-place to a matrix
