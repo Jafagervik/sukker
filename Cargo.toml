@@ -9,11 +9,8 @@ readme = "README.md"
 description = "Linear Algebra and Matrices made easy!"
 repository = "https://github.com/Jafagervik/sukker.git"
 
-keywords = ["ai","matrix",  "numpy"]
+keywords = ["ai","matrix",  "numpy", "linalg", "vector"]
 categories = ["mathematics", "science"]
-
-[feature] 
-std = ""
 
 
 [dependencies]
@@ -23,7 +20,6 @@ num-traits = "0.2.15"
 rand = "0.8.5"
 rayon = "1.7.0"
 serde = { version = "1.0.164", features = ["derive"] }
-#std = { version = "0.2", features = ["std", "simd"] }
 
 [dev-dependencies]
 criterion = "0.5.1"

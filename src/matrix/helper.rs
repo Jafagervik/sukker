@@ -44,7 +44,7 @@ where
         if is_x86_feature_detected!("avx") {
             self.naive_matmul(other)
         } else if is_x86_feature_detected!("sse") {
-            self.naive_matmul(other)
+            self.blocked_matmul(other, 4)
         } else {
             self.naive_matmul(other)
         }

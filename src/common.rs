@@ -69,7 +69,9 @@ where
     fn tan(&self) -> Self;
     fn cos(&self) -> Self;
     fn sinh(&self) -> Self;
-    fn tanh(&self) -> Self;
     fn cosh(&self) -> Self;
-    fn eigenvalue(&self) -> T;
+    fn tanh(&self) -> Self;
+    fn neg(&self) -> Self;
+    fn get_eigenvalues(&self) -> Option<Vec<T>>;
+    fn get_eigenvectors(&self) -> Option<Vec<T>>;
 }

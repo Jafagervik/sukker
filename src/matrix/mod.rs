@@ -134,7 +134,7 @@ where
             if i == self.nrows - 1 {
                 break;
             }
-            write!(f, "\n");
+            writeln!(f);
         }
         writeln!(f, "], dtype={}", std::any::type_name::<T>())
     }
@@ -216,7 +216,7 @@ where
             if i == self.nrows - 1 {
                 break;
             }
-            print!("\n");
+            println!();
         }
         println!("], dtype={}", std::any::type_name::<T>());
     }
@@ -1434,6 +1434,25 @@ where
         Self::new(data, self.shape()).unwrap()
     }
 
+    /// Negates every value in the matrix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixMathFloats};
+    ///
+    /// let matrix = Matrix::<f32>::ones((2,2));
+    ///
+    /// let negated = matrix.neg();
+    ///
+    /// assert_eq!(negated.all(|&e| e == -1.0), true);
+    /// ```
+    fn neg(&self) -> Self {
+        let data: Vec<T> = self.data.par_iter().map(|&e| e.neg()).collect();
+
+        Self::new(data, self.shape()).unwrap()
+    }
+
     /// Find the eigenvale of a matrix
     ///
     /// # Examples
@@ -1443,10 +1462,14 @@ where
     ///
     /// let mut matrix = Matrix::init(2.0, (2,100));
     ///
-    /// assert_eq!(42f32, 42f32);
     /// ```
-    fn eigenvalue(&self) -> T {
+    fn get_eigenvalues(&self) -> Option<Vec<T>> {
         todo!()
+    }
+
+    /// Find the eigenvectors
+    fn get_eigenvectors(&self) -> Option<Vec<T>> {
+        unimplemented!()
     }
 }
 

@@ -69,7 +69,7 @@ where
 
                 write!(f, "{elem} ");
             }
-            write!(f, "\n");
+            writeln!(f);
         }
         writeln!(f, "\ndtype = {}", std::any::type_name::<T>())
     }
