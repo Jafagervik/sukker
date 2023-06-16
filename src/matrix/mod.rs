@@ -19,12 +19,12 @@ use std::{
 };
 
 use itertools::{iproduct, Itertools};
-use num_traits::{pow, sign::abs};
+use num_traits::{pow, sign::abs, Float};
 use rand::Rng;
 use rayon::prelude::*;
 use std::iter::Sum;
 
-use crate::{at, MatrixElement, MatrixError, SparseMatrix};
+use crate::{at, MatrixElement, MatrixError, MatrixMathFloats, SparseMatrix};
 
 /// Shape represents the dimension size
 /// of the matrix as a tuple of usize
@@ -1291,6 +1291,164 @@ where
     }
 }
 
+impl<'a, T> MatrixMathFloats<'a, T> for Matrix<'a, T>
+where
+    T: MatrixElement + Float + 'a,
+    <T as FromStr>::Err: Error + 'static,
+    Vec<T>: IntoParallelIterator,
+    Vec<&'a T>: IntoParallelRefIterator<'a>,
+{
+    /// Takes the logarithm of each element
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, MatrixMathFloats};
+    ///
+    /// let matrix = Matrix::init(2.0, (2,2));
+    ///
+    /// ```
+    fn log(&self, base: T) -> Self {
+        let data: Vec<T> = self.data.par_iter().map(|&e| e.log(base)).collect();
+
+        Self::new(data, self.shape()).unwrap()
+    }
+
+    /// Takes the natural logarithm of each element in a matrix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::Matrix;
+    /// use sukker::constants::EF64;
+    ///
+    /// let matrix: Matrix<f64> = Matrix::init(EF64, (2,2));
+    ///
+    /// ```
+    fn ln(&self) -> Self {
+        let data: Vec<T> = self.data.par_iter().map(|&e| e.ln()).collect();
+
+        Self::new(data, self.shape()).unwrap()
+    }
+
+    /// Gets sin of every value
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::Matrix;
+    /// use sukker::constants::EF32;
+    ///
+    /// let matrix = Matrix::init(EF32, (2,2));
+    ///
+    /// ```
+    fn sin(&self) -> Self {
+        let data: Vec<T> = self.data.par_iter().map(|&e| e.sin()).collect();
+
+        Self::new(data, self.shape()).unwrap()
+    }
+
+    /// Gets cos of every value
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::Matrix;
+    /// use sukker::constants::EF32;
+    ///
+    /// let matrix = Matrix::init(EF32, (2,2));
+    ///
+    /// ```
+    fn cos(&self) -> Self {
+        let data: Vec<T> = self.data.par_iter().map(|&e| e.cos()).collect();
+
+        Self::new(data, self.shape()).unwrap()
+    }
+
+    /// Gets tan of every value
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::Matrix;
+    /// use sukker::constants::EF32;
+    ///
+    /// let matrix = Matrix::init(EF32, (2,2));
+    ///
+    /// ```
+    fn tan(&self) -> Self {
+        let data: Vec<T> = self.data.par_iter().map(|&e| e.tan()).collect();
+
+        Self::new(data, self.shape()).unwrap()
+    }
+
+    /// Gets sinh of every value
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::Matrix;
+    /// use sukker::constants::EF32;
+    ///
+    /// let matrix = Matrix::init(EF32, (2,2));
+    ///
+    /// ```
+    fn sinh(&self) -> Self {
+        let data: Vec<T> = self.data.par_iter().map(|&e| e.sin()).collect();
+
+        Self::new(data, self.shape()).unwrap()
+    }
+
+    /// Gets cosh of every value
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::Matrix;
+    /// use sukker::constants::EF32;
+    ///
+    /// let matrix = Matrix::init(EF32, (2,2));
+    ///
+    /// ```
+    fn cosh(&self) -> Self {
+        let data: Vec<T> = self.data.par_iter().map(|&e| e.tanh()).collect();
+
+        Self::new(data, self.shape()).unwrap()
+    }
+
+    /// Gets tanh of every value
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::Matrix;
+    /// use sukker::constants::EF32;
+    ///
+    /// let matrix = Matrix::init(EF32, (2,2));
+    ///
+    /// ```
+    fn tanh(&self) -> Self {
+        let data: Vec<T> = self.data.par_iter().map(|&e| e.tanh()).collect();
+
+        Self::new(data, self.shape()).unwrap()
+    }
+
+    /// Find the eigenvale of a matrix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::Matrix;
+    ///
+    /// let mut matrix = Matrix::init(2.0, (2,100));
+    ///
+    /// assert_eq!(42f32, 42f32);
+    /// ```
+    fn eigenvalue(&self) -> T {
+        todo!()
+    }
+}
+
 /// trait MatrixLinAlg contains all common Linear Algebra functions to be
 /// performed on matrices
 impl<'a, T> Matrix<'a, T>
@@ -1524,96 +1682,6 @@ where
         let data: Vec<T> = self.data.par_iter().map(|&e| e / val).collect();
 
         Self::new(data, self.shape()).unwrap()
-    }
-
-    /// Takes the logarithm of each element
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::Matrix;
-    ///
-    /// let matrix = Matrix::init(2.0, (2,2));
-    ///
-    /// ```
-    fn log(&self, base: T) -> Self {
-        unimplemented!()
-        // let data: Vec<T> = self.data.iter().map(|&e| e.log(base)).collect();
-        //
-        //  Self::new(data, self.shape)
-    }
-
-    /// Takes the natural logarithm of each element in a matrix
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::Matrix;
-    /// use sukker::constants::EF64;
-    ///
-    /// let matrix: Matrix<f64> = Matrix::init(EF64, (2,2));
-    ///
-    /// // TBI
-    /// ```
-    fn ln(&self) -> Self {
-        unimplemented!()
-        // let data: Vec<T> = self.data.iter().map(|&e| e.ln()).collect();
-        //
-        // Self::new(data, self.shape)
-    }
-
-    /// Gets tanh of every value
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::Matrix;
-    /// use sukker::constants::EF32;
-    ///
-    /// let matrix = Matrix::init(EF32, (2,2));
-    ///
-    /// ```
-    fn tanh(&self) -> Self {
-        unimplemented!()
-        // let data: Vec<T> = self.data.iter().map(|&e| e.tanh()).collect();
-        //
-        // Self::new(data, self.shape())
-    }
-
-    /// Gets sinh of every value
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::Matrix;
-    /// use sukker::constants::EF32;
-    ///
-    /// let matrix = Matrix::init(EF32, (2,2));
-    ///
-    /// ```
-    fn sinh(&self) -> Self {
-        unimplemented!()
-        // let data: Vec<T> = self.data.iter().map(|&e| e.tanh()).collect();
-        //
-        // Self::new(data, self.shape())
-    }
-
-    /// Gets cosh of every value
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::Matrix;
-    /// use sukker::constants::EF32;
-    ///
-    /// let matrix = Matrix::init(EF32, (2,2));
-    ///
-    /// ```
-    fn cosh(&self) -> Self {
-        unimplemented!()
-        // let data: Vec<T> = self.data.iter().map(|&e| e.tanh()).collect();
-        //
-        // Self::new(data, self.shape())
     }
 
     /// Pows each value in a matrix by val times
@@ -1851,6 +1919,15 @@ where
         Ok(self.matmul_helper(other))
     }
 
+    /// Get's the determinat of a N x N matrix
+    fn determinant(&self) -> Option<T> {
+        if self.nrows != self.ncols {
+            return None;
+        }
+
+        Some(self.determinant_helper())
+    }
+
     /// Transpose a matrix in-place
     ///
     /// # Examples
@@ -1907,21 +1984,6 @@ where
         let mut res = self.clone();
         res.transpose();
         res
-    }
-
-    /// Find the eigenvale of a matrix
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::Matrix;
-    ///
-    /// let mut matrix = Matrix::init(2.0, (2,100));
-    ///
-    /// assert_eq!(42f32, 42f32);
-    /// ```
-    fn eigenvalue(&self) -> T {
-        todo!()
     }
 }
 
