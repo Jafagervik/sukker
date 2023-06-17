@@ -18,6 +18,7 @@
 mod helper;
 
 use helper::*;
+use num_traits::real::Real;
 use num_traits::Float;
 use rand::Rng;
 
@@ -29,7 +30,7 @@ use std::{collections::HashMap, error::Error, marker::PhantomData, str::FromStr}
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{at, LinAlgFloats, Matrix, MatrixElement, MatrixError, Operation, Shape};
+use crate::{at, LinAlgFloats, LinAlgReals, Matrix, MatrixElement, MatrixError, Operation, Shape};
 
 /// SparseMatrixData represents the datatype used to store information
 /// about non-zero values in a general matrix.
@@ -725,6 +726,17 @@ where
         };
     }
 
+    /// Negates all items
+    pub fn neg(&self) -> Self {
+        let data = self
+            .data
+            .par_iter()
+            .map(|((i, j), &e)| ((*i, *j), e.neg()))
+            .collect::<SparseMatrixData<T>>();
+
+        Self::new(data, self.shape())
+    }
+
     /// Finds average value of a matrix
     ///
     /// Returns 0 if matrix is empty
@@ -785,117 +797,133 @@ where
     }
 }
 
-/// Linear algebra on sparse matrices
-
-impl<'a, T> LinAlgFloats<'a, T> for SparseMatrix<'a, T>
+/// Linear algebra on integer sparse matrices
+impl<'a, T> LinAlgReals<'a, T> for SparseMatrix<'a, T>
 where
-    T: MatrixElement + Float,
+    T: MatrixElement + Real,
     <T as FromStr>::Err: Error + 'static,
-    Vec<T>: IntoParallelIterator,
-    Vec<&'a T>: IntoParallelRefIterator<'a>,
+    HashMap<(usize, usize), T>: FromParallelIterator<T>,
 {
-    fn ln(&self) -> Self {
-        let data = self
-            .data
-            .par_iter()
-            .map(|((i, j), &e)| ((*i, *j), e.ln()))
-            .collect::<SparseMatrixData<T>>();
+    fn log(&self, base: T) -> Self {
+        let data = self.data.par_iter().map(|(_, &e)| e.log(base)).collect();
 
         Self::new(data, self.shape())
     }
 
-    fn log(&self, base: T) -> Self {
-        let data = self
-            .data
-            .par_iter()
-            .map(|((i, j), &e)| ((*i, *j), e.log(base)))
-            .collect::<SparseMatrixData<T>>();
+    fn ln(&self) -> Self {
+        let data = self.data.par_iter().map(|(_, &e)| e.ln()).collect();
 
         Self::new(data, self.shape())
     }
 
     fn sin(&self) -> Self {
-        let data = self
-            .data
-            .par_iter()
-            .map(|((i, j), &e)| ((*i, *j), e.sin()))
-            .collect::<SparseMatrixData<T>>();
+        let data = self.data.par_iter().map(|(_, &e)| e.sin()).collect();
 
         Self::new(data, self.shape())
     }
 
     fn cos(&self) -> Self {
-        let data = self
-            .data
-            .par_iter()
-            .map(|((i, j), &e)| ((*i, *j), e.cos()))
-            .collect::<SparseMatrixData<T>>();
+        let data = self.data.par_iter().map(|(_, &e)| e.cos()).collect();
 
         Self::new(data, self.shape())
     }
 
     fn tan(&self) -> Self {
-        let data = self
-            .data
-            .par_iter()
-            .map(|((i, j), &e)| ((*i, *j), e.tan()))
-            .collect::<SparseMatrixData<T>>();
-
-        Self::new(data, self.shape())
-    }
-
-    fn sinh(&self) -> Self {
-        let data = self
-            .data
-            .par_iter()
-            .map(|((i, j), &e)| ((*i, *j), e.sinh()))
-            .collect::<SparseMatrixData<T>>();
-
-        Self::new(data, self.shape())
-    }
-
-    fn cosh(&self) -> Self {
-        let data = self
-            .data
-            .par_iter()
-            .map(|((i, j), &e)| ((*i, *j), e.cosh()))
-            .collect::<SparseMatrixData<T>>();
-
-        Self::new(data, self.shape())
-    }
-
-    fn tanh(&self) -> Self {
-        let data = self
-            .data
-            .par_iter()
-            .map(|((i, j), &e)| ((*i, *j), e.tanh()))
-            .collect::<SparseMatrixData<T>>();
-
-        Self::new(data, self.shape())
-    }
-
-    fn neg(&self) -> Self {
-        let data = self
-            .data
-            .par_iter()
-            .map(|((i, j), &e)| ((*i, *j), e.neg()))
-            .collect::<SparseMatrixData<T>>();
+        let data = self.data.par_iter().map(|(_, &e)| e.tan()).collect();
 
         Self::new(data, self.shape())
     }
 
     fn sqrt(&self) -> Self {
-        let data = self
-            .data
-            .par_iter()
-            .map(|((i, j), &e)| {
-                if e > T::zero() {
-                    ((*i, *j), e.sqrt())
-                } else {
-                    ((*i, *j), e)
-                }
-            })
-            .collect::<SparseMatrixData<T>>();
+        let data = self.data.par_iter().map(|(_, &e)| e.sqrt()).collect();
+
+        Self::new(data, self.shape())
+    }
+
+    fn sinh(&self) -> Self {
+        let data = self.data.par_iter().map(|(_, &e)| e.sinh()).collect();
+
+        Self::new(data, self.shape())
+    }
+
+    fn cosh(&self) -> Self {
+        let data = self.data.par_iter().map(|(_, &e)| e.cosh()).collect();
+
+        Self::new(data, self.shape())
+    }
+
+    fn tanh(&self) -> Self {
+        let data = self.data.par_iter().map(|(_, &e)| e.tanh()).collect();
+
+        Self::new(data, self.shape())
+    }
+
+    fn get_eigenvectors(&self) -> Option<Vec<T>> {
+        todo!()
+    }
+
+    fn get_eigenvalues(&self) -> Option<Vec<T>> {
+        todo!()
+    }
+}
+
+/// Linear algebra on sparse matrices
+impl<'a, T> LinAlgFloats<'a, T> for SparseMatrix<'a, T>
+where
+    T: MatrixElement + Float,
+    <T as FromStr>::Err: Error + 'static,
+    HashMap<(usize, usize), T>: FromParallelIterator<T>,
+{
+    fn ln(&self) -> Self {
+        let data = self.data.par_iter().map(|(_, &e)| e.ln()).collect();
+
+        Self::new(data, self.shape())
+    }
+
+    fn log(&self, base: T) -> Self {
+        let data = self.data.par_iter().map(|(_, &e)| e.log(base)).collect();
+
+        Self::new(data, self.shape())
+    }
+
+    fn sin(&self) -> Self {
+        let data = self.data.par_iter().map(|(_, &e)| e.sin()).collect();
+
+        Self::new(data, self.shape())
+    }
+
+    fn cos(&self) -> Self {
+        let data = self.data.par_iter().map(|(_, &e)| e.cos()).collect();
+
+        Self::new(data, self.shape())
+    }
+
+    fn tan(&self) -> Self {
+        let data = self.data.par_iter().map(|(_, &e)| e.tan()).collect();
+
+        Self::new(data, self.shape())
+    }
+
+    fn sqrt(&self) -> Self {
+        let data = self.data.par_iter().map(|(_, &e)| e.sqrt()).collect();
+
+        Self::new(data, self.shape())
+    }
+
+    fn sinh(&self) -> Self {
+        let data = self.data.par_iter().map(|(_, &e)| e.sinh()).collect();
+
+        Self::new(data, self.shape())
+    }
+
+    fn cosh(&self) -> Self {
+        let data = self.data.par_iter().map(|(_, &e)| e.cosh()).collect();
+
+        Self::new(data, self.shape())
+    }
+
+    fn tanh(&self) -> Self {
+        let data = self.data.par_iter().map(|(_, &e)| e.tanh()).collect();
 
         Self::new(data, self.shape())
     }
