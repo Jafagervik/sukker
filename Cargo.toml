@@ -27,18 +27,18 @@ serde = { version = "1.0.164", features = ["derive"] }
 criterion = "0.5.1"
 
 [[bench]]
-name = "matmul_benches"
+name = "dense_mnnp_bench"
 harness = false
 
 [[bench]]
-name = "blocked_matmul_benches"
+name = "dense_nn_bench"
 harness = false
 
 
 [[bench]]
-name = "sparse_matmul"
+name = "sparse_mnnp_bench"
 harness = false
 
 [[bench]]
-name = "nn_sparse_matmul"
+name = "sparse_nn_bench"
 harness = false

@@ -4,10 +4,10 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 // Benchmark for matrix multiplication
 fn blocked_matmul_bench(c: &mut Criterion) {
-    let x = black_box(Matrix::<f64>::randomize((1000, 1000)));
-    let y = black_box(Matrix::<f64>::randomize((1000, 1000)));
+    let x = black_box(Matrix::<f64>::randomize((100, 100)));
+    let y = black_box(Matrix::<f64>::randomize((100, 100)));
 
-    c.bench_function("blocked matmul transpose", |b| {
+    c.bench_function("NxN @ NxN dense matmul", |b| {
         b.iter(|| x.matmul(&y).unwrap())
     });
 }

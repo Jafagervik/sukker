@@ -4,7 +4,7 @@ use sukker::{smd, SparseMatrix, SparseMatrixData};
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 // Benchmark for matrix multiplication
-fn sparse_matmul_bench(c: &mut Criterion) {
+fn nn_sparse_matmul_bench(c: &mut Criterion) {
     let indexes: SparseMatrixData<f64> = smd![
         ((0, 1), 2.0),
         ((1, 9), 4.0),
@@ -22,7 +22,7 @@ fn sparse_matmul_bench(c: &mut Criterion) {
         ((0, 9), 8.0)
     ];
 
-    let x = black_box(SparseMatrix::<f64>::init(indexes, (999, 1000)));
+    let x = black_box(SparseMatrix::<f64>::init(indexes, (100, 100)));
 
     let indexes2: SparseMatrixData<f64> = smd![
         ((0, 0), 2.0),
@@ -41,12 +41,12 @@ fn sparse_matmul_bench(c: &mut Criterion) {
         ((9, 7), 6.0)
     ];
 
-    let y = black_box(SparseMatrix::<f64>::init(indexes2, (1000, 999)));
+    let y = black_box(SparseMatrix::<f64>::init(indexes2, (100, 100)));
 
-    c.bench_function("MxN @ NxP sparse matmul", |b| {
+    c.bench_function("NxN @ NxN sparse matmul", |b| {
         b.iter(|| x.matmul_sparse(&y).unwrap())
     });
 }
 
-criterion_group!(benches, sparse_matmul_bench);
+criterion_group!(benches, nn_sparse_matmul_bench);
 criterion_main!(benches);
