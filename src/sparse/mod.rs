@@ -847,6 +847,13 @@ where
     pub fn mul(&self, other: &Self) -> Result<Self, MatrixError> {
         Self::sparse_helper(&self, other, Operation::MUL)
     }
+
+    /// Same as `mul`. This kind of matrix multiplication is called
+    /// a dot product
+    pub fn dot(&self, other: &Self) -> Result<Self, MatrixError> {
+        self.mul(other)
+    }
+
     /// Divides two sparse matrices
     /// and return a new one
     ///
