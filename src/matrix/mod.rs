@@ -2065,7 +2065,11 @@ where
     /// // let inverse  = matrix.inverse();
     ///
     /// ```
-    fn inverse(&self) -> Option<Self> {
+    pub fn inverse(&self) -> Option<Self> {
+        if self.shape() != (2, 2) {
+            eprintln!("Function not implemented for inverse on larger matrices yet!");
+            return None;
+        }
         if self.nrows != self.ncols {
             eprintln!("Oops");
             return None;
@@ -2075,25 +2079,22 @@ where
             return None;
         }
 
-        // 2x2 matrix is a special case
-        if self.shape() == (2, 2) {
-            let a = self.at(0, 0);
-            let b = self.at(0, 1);
-            let c = self.at(1, 0);
-            let d = self.at(1, 1);
+        let a = self.at(0, 0);
+        let b = self.at(0, 1);
+        let c = self.at(1, 0);
+        let d = self.at(1, 1);
 
-            let mut mat = Self::new(vec![d, -b, -c, a], self.shape()).unwrap();
+        let mut mat = Self::new(vec![d, -b, -c, a], self.shape()).unwrap();
 
-            mat.mul_val_self(T::one() / (a * d - b * c));
+        mat.mul_val_self(T::one() / (a * d - b * c));
 
-            return Some(mat);
-        }
+        return Some(mat);
 
-        let mut inverse = Self::zeros_like(self);
-
-        let identity_mat = Self::eye_like(self);
-
-        Some(inverse)
+        // let mut inverse = Self::zeros_like(self);
+        //
+        // let identity_mat = Self::eye_like(self);
+        //
+        // Some(inverse)
     }
 
     /// Transpose a matrix in-place
