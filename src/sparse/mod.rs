@@ -342,7 +342,7 @@ where
     ///
     /// Returns None if index is out of bounds.
     ///
-    /// Examples:
+    /// Examples
     ///
     /// ```
     /// use sukker::SparseMatrix;
@@ -369,7 +369,7 @@ where
 
     /// Gets the size of the sparse matrix
     ///
-    /// Examples:
+    /// Examples
     ///
     /// ```
     /// use sukker::SparseMatrix;
@@ -379,9 +379,9 @@ where
     /// assert_eq!(sparse.shape(), (4,4));
     /// assert_eq!(sparse.sparcity(), 0.75);
     /// assert_eq!(sparse.all(|(_, val)| val >= 1.0 && val <= 2.0), true);
-    ///
     /// assert_eq!(sparse.size(), 16);
-    pub fn randomize_range(start: T, end: T, sparcity: f32, shape: Shape) -> Self {
+    /// ```
+    pub fn randomize_range(start: T, end: T, sparcity: f64, shape: Shape) -> Self {
         let mut rng = rand::thread_rng();
 
         let (rows, cols) = shape;
@@ -390,7 +390,7 @@ where
         // we ahve to get a new one
         let mut matrix = Self::new(shape.0, shape.1);
 
-        while matrix.sparcity() > sparcity as f64 {
+        while matrix.sparcity() > sparcity {
             let value: T = rng.gen_range(start..=end);
 
             let row: usize = rng.gen_range(0..rows);
@@ -406,8 +406,64 @@ where
     }
 
     /// Randomizes a sparse matrix with values between 0 and 1.
-    pub fn randomize(sparcity: f32, shape: Shape) -> Self {
+    ///
+    /// Examples
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let sparse = SparseMatrix::<f32>::randomize(0.75, (4,4));
+    ///
+    /// assert_eq!(sparse.shape(), (4,4));
+    /// assert_eq!(sparse.sparcity(), 0.75);
+    /// assert_eq!(sparse.all(|(_, val)| val >= 0.0 && val <= 1.0), true);
+    /// assert_eq!(sparse.size(), 16);
+    /// ```
+    pub fn randomize(sparcity: f64, shape: Shape) -> Self {
         Self::randomize_range(T::zero(), T::one(), sparcity, shape)
+    }
+
+    /// Randomizes a sparse matrix  to have same shape and sparcity as another one
+    /// You can however set the range
+    ///
+    /// Examples
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let sparse = SparseMatrix::<f32>::randomize_range(1.0,2.0, 0.75, (4,4));
+    ///
+    /// let copy = SparseMatrix::randomize_range_like(2.0, 4.0, &sparse);
+    ///
+    /// assert_eq!(copy.shape(), (4,4));
+    /// assert_eq!(copy.sparcity(), 0.75);
+    /// assert_eq!(copy.all(|(_, val)| val >= 2.0 && val <= 4.0), true);
+    /// assert_eq!(copy.size(), 16);
+    /// ```
+    pub fn randomize_range_like(start: T, end: T, matrix: &Self) -> Self {
+        Self::randomize_range(start, end, matrix.sparcity(), matrix.shape())
+    }
+
+    /// Randomizes a sparse matrix  to have same shape and sparcity as another one
+    /// The values here are set to be between 0 and 1, no matter the value range
+    /// of the matrix whos shape is being copied.
+    ///
+    /// Examples
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let sparse = SparseMatrix::<f32>::randomize_range(2.0, 4.0, 0.75, (4,4));
+    ///
+    /// let copy = SparseMatrix::random_like(&sparse);
+    ///
+    /// assert_eq!(copy.shape(), (4,4));
+    /// assert_eq!(copy.sparcity(), 0.75);
+    /// assert_eq!(copy.all(|(_, val)| val >= 0.0 && val <= 1.0), true);
+    /// assert_eq!(copy.size(), 16);
+    /// ```
+    pub fn random_like(matrix: &Self) -> Self {
+        Self::randomize(matrix.sparcity(), matrix.shape())
     }
 
     /// Same as `get`, but will panic if indexes are out of bounds
