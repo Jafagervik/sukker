@@ -14,7 +14,6 @@ categories = ["mathematics", "science"]
 
 rustflags = ["-C", "opt-level=3"]
 
-
 [dependencies]
 anyhow = "1.0.71"
 itertools = "0.10.5"

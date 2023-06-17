@@ -7,14 +7,8 @@
 ![Maintenance](https://img.shields.io/badge/maintenance-experimental-blue.svg)
 ![License](https://img.shields.io/crates/l/sukker)
 
-
-[<img alt="github" src="https://img.shields.io/badge/github-Jafagervik/sukker-8da0cb?style=for-the-badge&labelColor=555555&logo=github" height="20">](https://github.com/Jafagervik/sukker)
-[<img alt="crates.io" src="https://img.shields.io/crates/v/sukker.svg?style=for-the-badge&color=fc8d62&logo=rust" height="20">](https://crates.io/crates/sukker)
-[<img alt="docs.rs" src="https://img.shields.io/badge/docs.rs-sukker-66c2a5?style=for-the-badge&labelColor=555555&logo=docs.rs" height="20">](https://docs.rs/sukker)
-[<img alt="build status" src="https://img.shields.io/github/actions/workflow/status/Jafagervik/sukker/ci.yml?branch=master&style=for-the-badge" height="20">](https://github.com/Jafagervik/sukker/actions?query=branch%3Amaster)
-
-
 Linear algebra in Rust!
+---
 
 Parallelized using rayon with support for many common datatypes,
 sukker tries to make matrix operations easier for the user, 
@@ -66,7 +60,7 @@ fn main() {
         ((3, 3), 8.0)
     ];
 
-    let sparse = SparseMatrix::<f64>::init(indexes, (4, 4));
+    let sparse = SparseMatrix::<f64>::new(indexes, (4, 4));
 
     sparse.print(3);
 }
@@ -82,7 +76,8 @@ Full API documentation can be found [here](https://docs.rs/sukker/latest/sukker/
 - [X] Easy to use!
 - [X] Blazingly fast
 - [X] Linear Algebra module fully functional on f32 and f64
-- [X] Optimized matrix multiplication 
+- [X] Optimized matrix multiplication for both sparse and dense matrices 
+- [X] Easily able to convert between sparse and dense matrices
 - [X] Serde support 
 - [X] Support for all signed numeric datatypes 
 - [X] Can be sent over threads
