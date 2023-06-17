@@ -19,6 +19,7 @@ mod helper;
 
 use helper::*;
 use num_traits::Float;
+use rand::Rng;
 
 use std::fmt::Display;
 use std::fs;
@@ -366,6 +367,49 @@ where
         }
     }
 
+    /// Gets the size of the sparse matrix
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let sparse = SparseMatrix::<f32>::randomize_range(1.0,2.0, 0.75, (4,4));
+    ///
+    /// assert_eq!(sparse.shape(), (4,4));
+    /// assert_eq!(sparse.sparcity(), 0.75);
+    /// assert_eq!(sparse.all(|(_, val)| val >= 1.0 && val <= 2.0), true);
+    ///
+    /// assert_eq!(sparse.size(), 16);
+    pub fn randomize_range(start: T, end: T, sparcity: f32, shape: Shape) -> Self {
+        let mut rng = rand::thread_rng();
+
+        let (rows, cols) = shape;
+
+        // If we insert in a position that's already filled up,
+        // we ahve to get a new one
+        let mut matrix = Self::new(shape.0, shape.1);
+
+        while matrix.sparcity() > sparcity as f64 {
+            let value: T = rng.gen_range(start..=end);
+
+            let row: usize = rng.gen_range(0..rows);
+            let col: usize = rng.gen_range(0..cols);
+
+            match matrix.data.get(&(row, col)) {
+                Some(_) => {}
+                None => matrix.set((row, col), value),
+            }
+        }
+
+        matrix
+    }
+
+    /// Randomizes a sparse matrix with values between 0 and 1.
+    pub fn randomize(sparcity: f32, shape: Shape) -> Self {
+        Self::randomize_range(T::zero(), T::one(), sparcity, shape)
+    }
+
     /// Same as `get`, but will panic if indexes are out of bounds
     ///
     /// Examples:
@@ -388,8 +432,16 @@ where
 
     /// Sets an element
     ///
+    /// If you're trying to insert a zero-value, this function
+    /// does nothing
+    ///
     /// Mutates or inserts a value based on indeces given
     pub fn set(&mut self, idx: Shape, value: T) {
+        if value == T::zero() {
+            eprintln!("You are trying to insert a 0 value.");
+            return;
+        }
+
         let i = at!(idx.0, idx.1, self.ncols);
 
         if i >= self.size() {
