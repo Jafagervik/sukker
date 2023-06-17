@@ -6,6 +6,9 @@ fn main() {
 
     let c = a.matmul(&b).unwrap();
 
+    // Or alternatively
+    let c = a.mm(&b).unwrap();
+
     println!("{}", c);
     println!("{:?}", c);
 
