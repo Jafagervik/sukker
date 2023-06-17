@@ -89,3 +89,13 @@ where
 {
     fn log(&self, base: T) -> Self;
 }
+
+// ====================
+//  Enums
+// ====================
+pub enum Operation {
+    ADD,
+    SUB,
+    MUL,
+    DIV,
+}

@@ -1,4 +1,3 @@
-use sukker::constants;
 use sukker::Matrix;
 
 #[test]
@@ -15,7 +14,7 @@ fn basic() {
 
     let a: Matrix<f32> = Matrix::randomize((3, 2));
 
-    let x = c.matmul(&a).unwrap();
+    let x = c.mm(&a).unwrap();
 
     assert_eq!(x.shape(), (2, 2));
 
@@ -27,7 +26,7 @@ fn new() {
     let a = Matrix::<f32>::randomize((7, 56));
     let b = Matrix::<f32>::randomize((56, 8));
 
-    let c = a.matmul(&b).unwrap();
+    let c = a.mm(&b).unwrap();
 
     // To print this beautiful matrix:
     c.print(7);

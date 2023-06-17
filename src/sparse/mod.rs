@@ -18,15 +18,18 @@
 mod helper;
 
 use helper::*;
+use num_traits::Float;
+use rand::Rng;
 
+use itertools::Itertools;
 use std::fmt::Display;
 use std::fs;
 use std::{collections::HashMap, error::Error, marker::PhantomData, str::FromStr};
 
-use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{at, smd, Matrix, MatrixElement, MatrixError, Shape};
+use crate::{at, LinAlgFloats, Matrix, MatrixElement, MatrixError, Operation, Shape};
 
 /// SparseMatrixData represents the datatype used to store information
 /// about non-zero values in a general matrix.
@@ -53,27 +56,31 @@ where
     _lifetime: PhantomData<&'a T>,
 }
 
-impl<'a, T> Display for SparseMatrix<'a, T>
+impl<'a, T> Error for SparseMatrix<'a, T>
 where
     T: MatrixElement,
     <T as FromStr>::Err: Error + 'static,
     Vec<T>: IntoParallelIterator,
     Vec<&'a T>: IntoParallelRefIterator<'a>,
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for i in 0..self.nrows {
-            for j in 0..self.ncols {
-                let elem = match self.data.get(&(i, j)) {
-                    Some(&val) => val,
-                    None => T::zero(),
-                };
+}
 
-                write!(f, "{elem} ");
-            }
-            writeln!(f);
-        }
-        writeln!(f, "\ndtype = {}", std::any::type_name::<T>())
-    }
+unsafe impl<'a, T> Send for SparseMatrix<'a, T>
+where
+    T: MatrixElement,
+    <T as FromStr>::Err: Error + 'static,
+    Vec<T>: IntoParallelIterator,
+    Vec<&'a T>: IntoParallelRefIterator<'a>,
+{
+}
+
+unsafe impl<'a, T> Sync for SparseMatrix<'a, T>
+where
+    T: MatrixElement,
+    <T as FromStr>::Err: Error + 'static,
+    Vec<T>: IntoParallelIterator,
+    Vec<&'a T>: IntoParallelRefIterator<'a>,
+{
 }
 
 impl<'a, T> FromStr for SparseMatrix<'a, T>
@@ -108,7 +115,30 @@ where
             .map(|e| e.parse::<usize>().unwrap())
             .collect::<Vec<usize>>();
 
-        Ok(Self::init(data, (dims[0], dims[1])))
+        Ok(Self::new(data, (dims[0], dims[1])))
+    }
+}
+
+impl<'a, T> Display for SparseMatrix<'a, T>
+where
+    T: MatrixElement,
+    <T as FromStr>::Err: Error + 'static,
+    Vec<T>: IntoParallelIterator,
+    Vec<&'a T>: IntoParallelRefIterator<'a>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for i in 0..self.nrows {
+            for j in 0..self.ncols {
+                let elem = match self.data.get(&(i, j)) {
+                    Some(&val) => val,
+                    None => T::zero(),
+                };
+
+                write!(f, "{elem} ");
+            }
+            writeln!(f);
+        }
+        writeln!(f, "\ndtype = {}", std::any::type_name::<T>())
     }
 }
 
@@ -121,7 +151,12 @@ where
 {
     /// Returns a sparse 3x3 identity matrix
     fn default() -> Self {
-        Self::eye(3)
+        Self {
+            data: HashMap::new(),
+            nrows: 0,
+            ncols: 0,
+            _lifetime: PhantomData::default(),
+        }
     }
 }
 
@@ -132,29 +167,6 @@ where
     Vec<T>: IntoParallelIterator,
     Vec<&'a T>: IntoParallelRefIterator<'a>,
 {
-    /// Constructs a new sparse matrix based on a shape
-    ///
-    /// All elements are set to 0 initially
-    ///
-    /// Examples
-    ///
-    /// ```
-    /// use sukker::SparseMatrix;
-    ///
-    /// let sparse = SparseMatrix::<f32>::new(3,3);
-    ///
-    /// assert_eq!(sparse.ncols, 3);
-    /// assert_eq!(sparse.nrows, 3);
-    /// ```
-    pub fn new(rows: usize, cols: usize) -> Self {
-        Self {
-            data: HashMap::new(),
-            nrows: rows,
-            ncols: cols,
-            _lifetime: PhantomData::default(),
-        }
-    }
-
     /// Constructs a new sparse matrix based on a hashmap
     /// containing the indices where value is not 0
     ///
@@ -177,17 +189,27 @@ where
     ///     ( (2, 7), 8.0)
     /// ];
     ///
-    /// let sparse = SparseMatrix::<f64>::init(indexes, (3,3));
+    /// let sparse = SparseMatrix::<f64>::new(indexes, (3,3));
     ///
     /// assert_eq!(sparse.shape(), (3,3));
     /// assert_eq!(sparse.get(4,5), None);
     /// assert_eq!(sparse.get(0,1), Some(0.0));
     /// ```
-    pub fn init(data: SparseMatrixData<'a, T>, shape: Shape) -> Self {
+    pub fn new(data: SparseMatrixData<'a, T>, shape: Shape) -> Self {
         Self {
             data,
             nrows: shape.0,
             ncols: shape.1,
+            _lifetime: PhantomData::default(),
+        }
+    }
+
+    /// Inits an empty matrix based on shape
+    pub fn init(nrows: usize, ncols: usize) -> Self {
+        Self {
+            data: HashMap::new(),
+            nrows,
+            ncols,
             _lifetime: PhantomData::default(),
         }
     }
@@ -210,7 +232,13 @@ where
             .map(|i| ((i, i), T::one()))
             .collect();
 
-        Self::init(data, (size, size))
+        Self::new(data, (size, size))
+    }
+
+    /// Produces an eye with the same shape as another
+    /// sparse matrix
+    pub fn eye_like(matrix: &Self) -> Self {
+        Self::eye(matrix.nrows)
     }
 
     /// Same as eye
@@ -227,6 +255,14 @@ where
     /// ```
     pub fn identity(size: usize) -> Self {
         Self::eye(size)
+    }
+
+    /// Creates a matrix with only one values at random
+    /// locations
+    ///
+    /// Same as `random_like` but with range from 1.0..=1.0
+    pub fn ones(sparsity: f64, shape: Shape) -> Self {
+        Self::randomize_range(T::one(), T::one(), sparsity, shape)
     }
 
     /// Reshapes a sparse matrix
@@ -276,9 +312,14 @@ where
             }
         }
 
-        Self::init(data, matrix.shape())
+        Self::new(data, matrix.shape())
     }
 
+    /// Constructs a sparse matrix from 3 slices.
+    /// One for the rows, one for the cols, and one for the value.
+    /// A combination of values fromt the same index corresponds to
+    /// an entry in the hasmap.
+    ///
     /// Csc in numpy uses 3 lists of same size
     ///
     /// Examples:
@@ -314,7 +355,7 @@ where
             .map(|(&i, (&j, &val))| ((i, j), val))
             .collect();
 
-        Ok(Self::init(data, shape))
+        Ok(Self::new(data, shape))
     }
 
     /// Parses from file, but will return a default sparse matrix if nothing is given
@@ -340,7 +381,7 @@ where
     ///
     /// Returns None if index is out of bounds.
     ///
-    /// Examples:
+    /// Examples
     ///
     /// ```
     /// use sukker::SparseMatrix;
@@ -365,6 +406,105 @@ where
         }
     }
 
+    /// Gets the size of the sparse matrix
+    ///
+    /// Examples
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let sparse = SparseMatrix::<f32>::randomize_range(1.0,2.0, 0.75, (4,4));
+    ///
+    /// assert_eq!(sparse.shape(), (4,4));
+    /// assert_eq!(sparse.sparsity(), 0.75);
+    /// assert_eq!(sparse.all(|(_, val)| val >= 1.0 && val <= 2.0), true);
+    /// assert_eq!(sparse.size(), 16);
+    /// ```
+    pub fn randomize_range(start: T, end: T, sparsity: f64, shape: Shape) -> Self {
+        let mut rng = rand::thread_rng();
+
+        let (rows, cols) = shape;
+
+        // If we insert in a position that's already filled up,
+        // we ahve to get a new one
+        let mut matrix = Self::init(shape.0, shape.1);
+
+        while matrix.sparsity() > sparsity {
+            let value: T = rng.gen_range(start..=end);
+
+            let row: usize = rng.gen_range(0..rows);
+            let col: usize = rng.gen_range(0..cols);
+
+            match matrix.data.get(&(row, col)) {
+                Some(_) => {}
+                None => matrix.set(value, (row, col)),
+            }
+        }
+
+        matrix
+    }
+
+    /// Randomizes a sparse matrix with values between 0 and 1.
+    ///
+    /// Examples
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let sparse = SparseMatrix::<f32>::randomize(0.75, (4,4));
+    ///
+    /// assert_eq!(sparse.shape(), (4,4));
+    /// assert_eq!(sparse.sparsity(), 0.75);
+    /// assert_eq!(sparse.all(|(_, val)| val >= 0.0 && val <= 1.0), true);
+    /// assert_eq!(sparse.size(), 16);
+    /// ```
+    pub fn randomize(sparcity: f64, shape: Shape) -> Self {
+        Self::randomize_range(T::zero(), T::one(), sparcity, shape)
+    }
+
+    /// Randomizes a sparse matrix  to have same shape and sparcity as another one
+    /// You can however set the range
+    ///
+    /// Examples
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let sparse = SparseMatrix::<f32>::randomize_range(1.0,2.0, 0.75, (4,4));
+    ///
+    /// let copy = SparseMatrix::randomize_range_like(2.0, 4.0, &sparse);
+    ///
+    /// assert_eq!(copy.shape(), (4,4));
+    /// assert_eq!(copy.sparsity(), 0.75);
+    /// assert_eq!(copy.all(|(_, val)| val >= 2.0 && val <= 4.0), true);
+    /// assert_eq!(copy.size(), 16);
+    /// ```
+    pub fn randomize_range_like(start: T, end: T, matrix: &Self) -> Self {
+        Self::randomize_range(start, end, matrix.sparsity(), matrix.shape())
+    }
+
+    /// Randomizes a sparse matrix  to have same shape and sparcity as another one
+    /// The values here are set to be between 0 and 1, no matter the value range
+    /// of the matrix whos shape is being copied.
+    ///
+    /// Examples
+    ///
+    /// ```
+    /// use sukker::SparseMatrix;
+    ///
+    /// let sparse = SparseMatrix::<f32>::randomize_range(2.0, 4.0, 0.75, (4,4));
+    ///
+    /// let copy = SparseMatrix::random_like(&sparse);
+    ///
+    /// assert_eq!(copy.shape(), (4,4));
+    /// assert_eq!(copy.sparsity(), 0.75);
+    /// assert_eq!(copy.all(|(_, val)| val >= 0.0 && val <= 1.0), true);
+    /// assert_eq!(copy.size(), 16);
+    /// ```
+    pub fn random_like(matrix: &Self) -> Self {
+        Self::randomize(matrix.sparsity(), matrix.shape())
+    }
+
     /// Same as `get`, but will panic if indexes are out of bounds
     ///
     /// Examples:
@@ -377,6 +517,7 @@ where
     /// assert_eq!(sparse.at(0,0), 1);
     /// assert_eq!(sparse.at(1,0), 0);
     /// ```
+    #[inline(always)]
     pub fn at(&self, i: usize, j: usize) -> T {
         match self.data.get(&(i, j)) {
             None => T::zero(),
@@ -386,8 +527,16 @@ where
 
     /// Sets an element
     ///
+    /// If you're trying to insert a zero-value, this function
+    /// does nothing
+    ///
     /// Mutates or inserts a value based on indeces given
-    pub fn set(&mut self, idx: Shape, value: T) {
+    pub fn set(&mut self, value: T, idx: Shape) {
+        if value == T::zero() {
+            eprintln!("You are trying to insert a 0 value.");
+            return;
+        }
+
         let i = at!(idx.0, idx.1, self.ncols);
 
         if i >= self.size() {
@@ -403,7 +552,7 @@ where
 
     /// A way of inserting with individual row and col
     pub fn insert(&mut self, i: usize, j: usize, value: T) {
-        self.set((i, j), value);
+        self.set(value, (i, j));
     }
 
     /// Prints out the sparse matrix data
@@ -446,6 +595,8 @@ where
     }
 
     /// Calcualtes sparcity for the given matrix
+    /// Sparity is defined as the percantage of the matrix
+    /// filled with 0 values
     ///
     /// Examples:
     ///
@@ -454,10 +605,10 @@ where
     ///
     /// let sparse = SparseMatrix::<i32>::eye(4);
     ///
-    /// assert_eq!(sparse.sparcity(), 0.75);
+    /// assert_eq!(sparse.sparsity(), 0.75);
     /// ```
     #[inline(always)]
-    pub fn sparcity(&self) -> f64 {
+    pub fn sparsity(&self) -> f64 {
         1.0 - self.data.par_iter().count() as f64 / self.size() as f64
     }
 
@@ -483,12 +634,12 @@ where
     /// ```
     /// use sukker::SparseMatrix;
     ///
-    /// let mut sparse = SparseMatrix::<i32>::new(4,4);
+    /// let mut sparse = SparseMatrix::<i32>::init(4,4);
     ///
-    /// sparse.set((2,0), 1);
-    /// sparse.set((3,0), 2);
-    /// sparse.set((0,1), 3);
-    /// sparse.set((0,2), 4);
+    /// sparse.set(1, (2,0));
+    /// sparse.set(2, (3,0));
+    /// sparse.set(3, (0,1));
+    /// sparse.set(4, (0,2));
     ///
     /// sparse.transpose();
     ///
@@ -524,12 +675,12 @@ where
     /// ```
     /// use sukker::SparseMatrix;
     ///
-    /// let mut mat = SparseMatrix::<i32>::new(4,4);
+    /// let mut mat = SparseMatrix::<i32>::init(4,4);
     ///
-    /// mat.set((2,0), 1);
-    /// mat.set((3,0), 2);
-    /// mat.set((0,1), 3);
-    /// mat.set((0,2), 4);
+    /// mat.set(1, (2,0));
+    /// mat.set(2, (3,0));
+    /// mat.set(3, (0,1));
+    /// mat.set(4, (0,2));
     ///
     /// let sparse = mat.transpose_new();
     ///
@@ -544,6 +695,217 @@ where
         let mut res = self.clone();
         res.transpose();
         res
+    }
+
+    /// Finds max element of a sparse matrix
+    /// Will return 0 if matrix is empty
+    pub fn max(&self) -> T {
+        let elem = self
+            .data
+            .iter()
+            .max_by(|(_, v1), (_, v2)| v1.partial_cmp(v2).unwrap());
+
+        return match elem {
+            Some((_, &v)) => v,
+            None => T::zero(),
+        };
+    }
+
+    /// Finds minimum element of a sparse matrix
+    /// Will return 0 if matrix is empty
+    pub fn min(&self) -> T {
+        let elem = self
+            .data
+            .iter()
+            .max_by(|(_, v1), (_, v2)| v1.partial_cmp(v2).unwrap());
+
+        return match elem {
+            Some((_, &v)) => v,
+            None => T::zero(),
+        };
+    }
+
+    /// Finds average value of a matrix
+    ///
+    /// Returns 0 if matrix is empty
+    pub fn avg(&self) -> T {
+        self.data.par_iter().map(|(_, &val)| val).sum::<T>()
+            / self.size().to_string().parse::<T>().unwrap()
+    }
+
+    /// Same as `avg`
+    pub fn mean(&self) -> T {
+        self.avg()
+    }
+
+    /// Finds the median value of a matrix
+    ///
+    /// If the matrix is empty, 0 is returned
+    pub fn median(&self) -> T {
+        if self.size() == 0 {
+            return T::zero();
+        }
+
+        if self.size() == 1 {
+            return self.at(0, 0);
+        }
+
+        // If more than half the values are 0 and we only have
+        // values > 0, 0 is returned
+        if self.min() >= T::zero() && self.sparsity() >= 0.5 {
+            return T::zero();
+        }
+
+        let sorted_values: Vec<T> = self
+            .data
+            .values()
+            .copied()
+            .sorted_by(|a, b| a.partial_cmp(&b).unwrap())
+            .collect::<Vec<T>>();
+
+        match self.data.len() % 2 {
+            0 => {
+                let half: usize = self.data.len() / 2;
+
+                sorted_values
+                    .iter()
+                    .skip(half - 1)
+                    .take(2)
+                    .copied()
+                    .sum::<T>()
+                    / (T::one() + T::one())
+            }
+            1 => {
+                let half: usize = self.data.len() / 2;
+
+                sorted_values.iter().nth(half).unwrap().to_owned()
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+
+/// Linear algebra on sparse matrices
+
+impl<'a, T> LinAlgFloats<'a, T> for SparseMatrix<'a, T>
+where
+    T: MatrixElement + Float,
+    <T as FromStr>::Err: Error + 'static,
+    Vec<T>: IntoParallelIterator,
+    Vec<&'a T>: IntoParallelRefIterator<'a>,
+{
+    fn ln(&self) -> Self {
+        let data = self
+            .data
+            .par_iter()
+            .map(|((i, j), &e)| ((*i, *j), e.ln()))
+            .collect::<SparseMatrixData<T>>();
+
+        Self::new(data, self.shape())
+    }
+
+    fn log(&self, base: T) -> Self {
+        let data = self
+            .data
+            .par_iter()
+            .map(|((i, j), &e)| ((*i, *j), e.log(base)))
+            .collect::<SparseMatrixData<T>>();
+
+        Self::new(data, self.shape())
+    }
+
+    fn sin(&self) -> Self {
+        let data = self
+            .data
+            .par_iter()
+            .map(|((i, j), &e)| ((*i, *j), e.sin()))
+            .collect::<SparseMatrixData<T>>();
+
+        Self::new(data, self.shape())
+    }
+
+    fn cos(&self) -> Self {
+        let data = self
+            .data
+            .par_iter()
+            .map(|((i, j), &e)| ((*i, *j), e.cos()))
+            .collect::<SparseMatrixData<T>>();
+
+        Self::new(data, self.shape())
+    }
+
+    fn tan(&self) -> Self {
+        let data = self
+            .data
+            .par_iter()
+            .map(|((i, j), &e)| ((*i, *j), e.tan()))
+            .collect::<SparseMatrixData<T>>();
+
+        Self::new(data, self.shape())
+    }
+
+    fn sinh(&self) -> Self {
+        let data = self
+            .data
+            .par_iter()
+            .map(|((i, j), &e)| ((*i, *j), e.sinh()))
+            .collect::<SparseMatrixData<T>>();
+
+        Self::new(data, self.shape())
+    }
+
+    fn cosh(&self) -> Self {
+        let data = self
+            .data
+            .par_iter()
+            .map(|((i, j), &e)| ((*i, *j), e.cosh()))
+            .collect::<SparseMatrixData<T>>();
+
+        Self::new(data, self.shape())
+    }
+
+    fn tanh(&self) -> Self {
+        let data = self
+            .data
+            .par_iter()
+            .map(|((i, j), &e)| ((*i, *j), e.tanh()))
+            .collect::<SparseMatrixData<T>>();
+
+        Self::new(data, self.shape())
+    }
+
+    fn neg(&self) -> Self {
+        let data = self
+            .data
+            .par_iter()
+            .map(|((i, j), &e)| ((*i, *j), e.neg()))
+            .collect::<SparseMatrixData<T>>();
+
+        Self::new(data, self.shape())
+    }
+
+    fn sqrt(&self) -> Self {
+        let data = self
+            .data
+            .par_iter()
+            .map(|((i, j), &e)| {
+                if e > T::zero() {
+                    ((*i, *j), e.sqrt())
+                } else {
+                    ((*i, *j), e)
+                }
+            })
+            .collect::<SparseMatrixData<T>>();
+
+        Self::new(data, self.shape())
+    }
+
+    fn get_eigenvalues(&self) -> Option<Vec<T>> {
+        unimplemented!()
+    }
+
+    fn get_eigenvectors(&self) -> Option<Vec<T>> {
+        unimplemented!()
     }
 }
 
@@ -613,6 +975,13 @@ where
     pub fn mul(&self, other: &Self) -> Result<Self, MatrixError> {
         Self::sparse_helper(&self, other, Operation::MUL)
     }
+
+    /// Same as `mul`. This kind of matrix multiplication is called
+    /// a dot product
+    pub fn dot(&self, other: &Self) -> Result<Self, MatrixError> {
+        self.mul(other)
+    }
+
     /// Divides two sparse matrices
     /// and return a new one
     ///
@@ -922,7 +1291,7 @@ where
     /// indexes.insert((1, 0), 2.0);
     /// indexes.insert((1, 1), 2.0);
     ///
-    /// let sparse = SparseMatrix::<f64>::init(indexes, (2, 2));
+    /// let sparse = SparseMatrix::<f64>::new(indexes, (2, 2));
     ///
     /// let mut indexes2: SparseMatrixData<f64> = HashMap::new();
     ///
@@ -931,7 +1300,7 @@ where
     /// indexes2.insert((1, 0), 2.0);
     /// indexes2.insert((1, 1), 2.0);
     ///
-    /// let sparse2 = SparseMatrix::<f64>::init(indexes2, (2, 2));
+    /// let sparse2 = SparseMatrix::<f64>::new(indexes2, (2, 2));
     ///
     /// let res = sparse.matmul_sparse(&sparse2).unwrap();
     ///
@@ -1056,23 +1425,89 @@ where
         self.data.iter_mut().for_each(|e| pred(e));
     }
 
-    fn find<F>(&self, pred: F) -> Option<Shape>
-    where
-        F: Fn(&T) -> bool + Sync,
-    {
-        unimplemented!()
-    }
-
-    /// Finds all indeces where predicates holds if possible
+    /// Finds value of first occurance where predicate holds true
     ///
     /// # Examples
     ///
     /// ```
     /// ```
-    fn find_all<F>(&self, pred: F) -> Option<Vec<Shape>>
+    pub fn find<F>(&self, pred: F) -> Option<T>
     where
-        F: Fn(&T) -> bool + Sync,
+        F: Fn((&Shape, &T)) -> bool + Sync,
     {
-        unimplemented!()
+        for entry in &self.data {
+            if pred(entry) {
+                return Some(*entry.1);
+            }
+        }
+
+        None
+    }
+
+    /// Finds all values where predicates holds if possible
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// ```
+    fn find_all<F>(&self, pred: F) -> Option<Vec<T>>
+    where
+        F: Fn((&Shape, &T)) -> bool + Sync,
+    {
+        let mut idxs: Vec<T> = Vec::new();
+        for entry in &self.data {
+            if pred(entry) {
+                idxs.push(*entry.1);
+            }
+        }
+
+        if !idxs.is_empty() {
+            Some(idxs)
+        } else {
+            None
+        }
+    }
+
+    /// Finds indices of first occurance where predicate holds true
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// ```
+    pub fn position<F>(&self, pred: F) -> Option<Shape>
+    where
+        F: Fn((&Shape, &T)) -> bool + Sync,
+    {
+        for entry in &self.data {
+            if pred(entry) {
+                return Some(*entry.0);
+            }
+        }
+
+        None
+    }
+
+    /// Finds all positions  where predicates holds if possible
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// ```
+    fn positions<F>(&self, pred: F) -> Option<Vec<Shape>>
+    where
+        F: Fn((&Shape, &T)) -> bool + Sync,
+    {
+        let mut idxs: Vec<Shape> = Vec::new();
+        for entry in &self.data {
+            if pred(entry) {
+                idxs.push(*entry.0);
+            }
+        }
+
+        if !idxs.is_empty() {
+            Some(idxs)
+        } else {
+            None
+        }
     }
 }

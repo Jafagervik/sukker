@@ -161,12 +161,7 @@ where
     /// assert_eq!(matrix.shape(), (3,3));
     /// ```
     fn default() -> Self {
-        Self {
-            data: vec![T::one(); 9],
-            nrows: 3,
-            ncols: 3,
-            _lifetime: PhantomData::default(),
-        }
+        Self::eye(3)
     }
 }
 
@@ -222,7 +217,7 @@ where
         println!("], dtype={}", std::any::type_name::<T>());
     }
 
-    /// Calculates sparcity of a given Matrix
+    /// Calculates sparsity of a given Matrix
     ///
     /// Examples:
     ///
@@ -231,10 +226,10 @@ where
     ///
     /// let mat: Matrix<f32> = Matrix::eye(2);
     ///
-    /// assert_eq!(mat.sparcity(), 0.5);
+    /// assert_eq!(mat.sparsity(), 0.5);
     /// ```
     #[inline(always)]
-    pub fn sparcity(&'a self) -> f64 {
+    pub fn sparsity(&'a self) -> f64 {
         self.count_where(|&e| e == T::zero()) as f64 / self.size() as f64
     }
 
@@ -593,18 +588,18 @@ where
     /// use sukker::Matrix;
     ///
     /// let mut matrix = Matrix::init(10.5, (2,3));
-    /// matrix.reshape((3,2));
+    /// matrix.reshape(3,2);
     ///
     /// assert_eq!(matrix.shape(), (3,2));
     /// ```
-    pub fn reshape(&mut self, new_shape: Shape) {
-        if new_shape.0 * new_shape.1 != self.size() {
+    pub fn reshape(&mut self, nrows: usize, ncols: usize) {
+        if nrows * ncols != self.size() {
             eprintln!("Err: Can not reshape.. Keeping old dimensions for now");
             return;
         }
 
-        self.nrows = new_shape.0;
-        self.ncols = new_shape.1;
+        self.nrows = nrows;
+        self.ncols = ncols;
     }
 
     /// Get the total size of the matrix
@@ -1150,18 +1145,7 @@ where
     /// assert_eq!(matrix.avg(), 10.0);
     /// ```
     pub fn avg(&self) -> T {
-        // FIXME: Simplify this code
-        if self.size() == 0 {
-            return T::zero();
-        }
-
-        // let mut size: T = T::zero();
-
-        let size = self.data.par_iter().map(|_| T::one()).sum();
-
-        let tot: T = self.data.par_iter().copied().sum::<T>();
-
-        tot / size
+        self.data.par_iter().copied().sum::<T>() / self.size().to_string().parse::<T>().unwrap()
     }
 
     /// Gets the mean of the matrix
@@ -2065,7 +2049,11 @@ where
     /// // let inverse  = matrix.inverse();
     ///
     /// ```
-    fn inverse(&self) -> Option<Self> {
+    pub fn inverse(&self) -> Option<Self> {
+        if self.shape() != (2, 2) {
+            eprintln!("Function not implemented for inverse on larger matrices yet!");
+            return None;
+        }
         if self.nrows != self.ncols {
             eprintln!("Oops");
             return None;
@@ -2075,25 +2063,22 @@ where
             return None;
         }
 
-        // 2x2 matrix is a special case
-        if self.shape() == (2, 2) {
-            let a = self.at(0, 0);
-            let b = self.at(0, 1);
-            let c = self.at(1, 0);
-            let d = self.at(1, 1);
+        let a = self.at(0, 0);
+        let b = self.at(0, 1);
+        let c = self.at(1, 0);
+        let d = self.at(1, 1);
 
-            let mut mat = Self::new(vec![d, -b, -c, a], self.shape()).unwrap();
+        let mut mat = Self::new(vec![d, -b, -c, a], self.shape()).unwrap();
 
-            mat.mul_val_self(T::one() / (a * d - b * c));
+        mat.mul_val_self(T::one() / (a * d - b * c));
 
-            return Some(mat);
-        }
+        return Some(mat);
 
-        let mut inverse = Self::zeros_like(self);
-
-        let identity_mat = Self::eye_like(self);
-
-        Some(inverse)
+        // let mut inverse = Self::zeros_like(self);
+        //
+        // let identity_mat = Self::eye_like(self);
+        //
+        // Some(inverse)
     }
 
     /// Transpose a matrix in-place

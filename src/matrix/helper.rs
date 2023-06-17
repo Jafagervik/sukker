@@ -1,6 +1,5 @@
-use std::{error::Error, mem::size_of, str::FromStr};
+use std::{error::Error, ops::RangeInclusive, str::FromStr};
 
-use crate::matrix::optim;
 use rayon::prelude::*;
 
 use crate::{at, Matrix, MatrixElement};
@@ -44,20 +43,41 @@ where
         //     return result;
         // }
 
+        let blck_size = Self::get_block_size(self, other);
+
+        // println!("BS: {}", blck_size);
+
         if self.shape() == other.shape() {
             // Calculated from lowest possible size where
             // nrows & blck_size == 0.
             // Block size will never be more than 50
-            let blck_size = (3..=50)
-                .collect::<Vec<_>>()
-                .into_par_iter()
-                .find_last(|b| self.nrows % b == 0)
-                .unwrap();
-
-            return self.blocked_matmul(other, blck_size);
+            return Self::blocked_matmul(self, other, blck_size);
         }
 
-        self.naive_matmul(other)
+        Self::optimized_blocked_matmul(self, other, blck_size)
+    }
+
+    // Calculate efficient blocksize
+    #[inline(always)]
+    pub fn get_block_size(&self, other: &Self) -> usize {
+        let range = Self::get_range_for_block_size(self, other);
+
+        range
+            .collect::<Vec<_>>()
+            .into_par_iter()
+            .find_last(|b| self.ncols % b == 0 || self.nrows % b == 0 || other.ncols % b == 0)
+            .unwrap()
+    }
+
+    #[inline(always)]
+    pub fn get_range_for_block_size(&self, other: &Self) -> RangeInclusive<usize> {
+        if self.nrows < 30 && self.ncols < 30 || other.nrows < 30 && other.ncols < 30 {
+            2..=10
+        } else if self.nrows < 100 && self.ncols < 100 || other.nrows < 100 && other.ncols < 100 {
+            10..=30
+        } else {
+            30..=50
+        }
     }
 
     // ===================================================
@@ -91,7 +111,6 @@ where
 
         let mut det = T::zero();
         let mut sign = T::one();
-        // println!("{:?}", matrix);
 
         for col in 0..n {
             let sub_det = Self::det_nxn(Self::submatrix(matrix.clone(), n, 0, col), n - 1);
@@ -141,6 +160,7 @@ where
         Self::new(vec![a, b], (2, 1)).unwrap()
     }
 
+    //
     // 1x2 @ 2x2 matrix
     #[inline(always)]
     fn onetwo_by_twotwo(&self, other: &Self) -> Self {
@@ -168,24 +188,67 @@ where
     // ========================================================================
 
     /// Naive matmul if you don't have any SIMD intrinsincts
-    fn naive_matmul(&self, other: &Self) -> Self {
-        let r1 = self.nrows;
-        let c1 = self.ncols;
-        let c2 = other.ncols;
+    ///
+    /// Also blocked, but doing different than just N
+    fn optimized_blocked_matmul(&self, other: &Self, block_size: usize) -> Self {
+        let M = self.nrows;
+        let N = self.ncols;
+        let P = other.ncols;
 
-        let mut data = vec![T::zero(); c2 * r1];
+        let mut data = vec![T::zero(); M * P];
 
-        let t_other = other.transpose_copy();
+        //let t_other = other.transpose_copy();
 
-        for i in 0..r1 {
-            for j in 0..c2 {
-                data[at!(i, j, c2)] = (0..c1)
+        for kk in (0..N).step_by(block_size) {
+            for jj in (0..P).step_by(block_size) {
+                for ii in (0..M).step_by(block_size) {
+                    let block_end_i = (ii + block_size).min(M);
+                    let block_end_j = (jj + block_size).min(P);
+                    let block_end_k = (kk + block_size).min(N);
+
+                    // Blocking for L0 memory
+                    for i in ii..block_end_i {
+                        for j in jj..block_end_j {
+                            // for k in kk..block_end_k {
+                            //     data[at!(i, j, P)] += self.at(i, k) * other.at(k, j);
+                            // }
+                            data[at!(i, j, P)] = (kk..block_end_k)
+                                .into_par_iter()
+                                .map(|k| self.at(i, k) * other.at(k, j))
+                                .sum();
+                        }
+                    }
+                }
+            }
+        }
+        Self::new(data, (M, P)).unwrap()
+    }
+
+    // SUMMA Algorithm
+    // https://www.netlib.org/lapack/lawnspdf/lawn96.pdf
+    fn summa(&self, other: &Self, block_size: usize) -> Self {
+        todo!()
+    }
+
+    // The magnum opus of matrix multiply, also known as naive matmul
+    // Only optimization is a parallelized innermost summation
+    fn naive(&self, other: &Self) -> Self {
+        let M = self.nrows;
+        let N = self.ncols;
+        let P = other.ncols;
+
+        let mut data = vec![T::zero(); M * P];
+
+        for i in 0..M {
+            for j in 0..P {
+                data[at!(i, j, P)] = (0..N)
                     .into_par_iter()
-                    .map(|k| self.at(i, k) * t_other.at(j, k))
+                    .map(|k| self.at(i, k) * other.at(k, j))
                     .sum();
             }
         }
-        Self::new(data, (c2, r1)).unwrap()
+
+        Self::new(data, (M, P)).unwrap()
     }
 
     // Blocked matmul if you don't have any SIMD intrinsincts
@@ -193,29 +256,29 @@ where
     //
     // Modification involves transposing the B matrix, at the cost
     // of increased space complexity, but better cache hit rate
+    //
+    // NOTE: Only works for M N @ N M matrices for now
     fn blocked_matmul(&self, other: &Self, block_size: usize) -> Self {
-        let N = self.nrows;
+        let n = self.nrows;
 
-        let en = block_size * (N / block_size);
+        let en = block_size * (n / block_size);
 
-        let mut data = vec![T::zero(); N * N];
+        let mut data = vec![T::zero(); n * n];
 
         let t_other = other.transpose_copy();
 
-        for kk in (0..N).step_by(en) {
-            for jj in (0..N).step_by(en) {
-                for i in 0..N {
+        for kk in (0..n).step_by(en) {
+            for jj in (0..n).step_by(en) {
+                for i in 0..n {
                     for j in jj..jj + block_size {
-                        data[at!(i, j, N)] = (kk..kk + block_size)
+                        data[at!(i, j, n)] = (kk..kk + block_size)
                             .into_par_iter()
                             .map(|k| self.at(i, k) * t_other.at(j, k))
                             .sum();
-
-                        // println!("i {} j {} val {}", i, j, data[at!(i, j, N)]);
                     }
                 }
             }
         }
-        Self::new(data, (N, N)).unwrap()
+        Self::new(data, (n, n)).unwrap()
     }
 }
