@@ -24,11 +24,11 @@ fn sparse_medium() {
     indexes.insert((2, 3), 6.0);
     indexes.insert((3, 3), 8.0);
 
-    let sparse = SparseMatrix::<f64>::init(indexes, (4, 4));
+    let sparse = SparseMatrix::<f64>::new(indexes, (4, 4));
 
     let indexes2 = smd![((0, 0), 2.0), ((1, 0), 4.0), ((1, 1), 8.0), ((2, 3), 6.0)];
 
-    let sparse2 = SparseMatrix::<f64>::init(indexes2, (4, 4));
+    let sparse2 = SparseMatrix::<f64>::new(indexes2, (4, 4));
 
     let res = sparse.add(&sparse2).unwrap();
 
@@ -50,7 +50,7 @@ fn matmul_sparse() {
     indexes.insert((1, 1), 6.0);
     indexes.insert((2, 2), 8.0);
 
-    let sparse = SparseMatrix::<f64>::init(indexes, (3, 3));
+    let sparse = SparseMatrix::<f64>::new(indexes, (3, 3));
 
     let mut indexes2: SparseMatrixData<f64> = HashMap::new();
 
@@ -59,7 +59,7 @@ fn matmul_sparse() {
     indexes2.insert((1, 1), 8.0);
     indexes2.insert((2, 1), 6.0);
 
-    let sparse2 = SparseMatrix::<f64>::init(indexes2, (3, 3));
+    let sparse2 = SparseMatrix::<f64>::new(indexes2, (3, 3));
 
     let res = sparse.matmul_sparse(&sparse2).unwrap();
 

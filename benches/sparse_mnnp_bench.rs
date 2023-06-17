@@ -22,7 +22,7 @@ fn sparse_matmul_bench(c: &mut Criterion) {
         ((0, 9), 8.0)
     ];
 
-    let x = black_box(SparseMatrix::<f64>::init(indexes, (99, 100)));
+    let x = black_box(SparseMatrix::<f64>::new(indexes, (99, 100)));
 
     let indexes2: SparseMatrixData<f64> = smd![
         ((0, 0), 2.0),
@@ -41,7 +41,7 @@ fn sparse_matmul_bench(c: &mut Criterion) {
         ((9, 7), 6.0)
     ];
 
-    let y = black_box(SparseMatrix::<f64>::init(indexes2, (100, 99)));
+    let y = black_box(SparseMatrix::<f64>::new(indexes2, (100, 99)));
 
     c.bench_function("MxN @ NxP sparse matmul", |b| {
         b.iter(|| x.matmul_sparse(&y).unwrap())

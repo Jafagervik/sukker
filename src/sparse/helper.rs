@@ -1,6 +1,6 @@
 //! Internal helpers
 
-use std::{collections::HashMap, error::Error, str::FromStr};
+use std::{error::Error, str::FromStr};
 
 use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
@@ -26,10 +26,10 @@ where
             return Err(MatrixError::MatrixDimensionMismatchError.into());
         }
 
-        let mut result_mat = Self::new(self.nrows, self.ncols);
+        let mut result_mat = Self::init(self.nrows, self.ncols);
 
         for (&idx, &val) in self.data.iter() {
-            result_mat.set(idx, val);
+            result_mat.set(val, idx);
         }
 
         for (&idx, &val) in other.data.iter() {
@@ -40,7 +40,7 @@ where
                     Operation::MUL => *value += val,
                     Operation::DIV => *value += val,
                 },
-                None => result_mat.set(idx, val),
+                None => result_mat.set(val, idx),
             };
         }
 
@@ -63,14 +63,14 @@ where
                     Operation::MUL => *value *= val,
                     Operation::DIV => *value /= val,
                 },
-                None => self.set(idx, val),
+                None => self.set(val, idx),
             };
         }
     }
 
     #[doc(hidden)]
     pub fn sparse_helper_val(&self, value: T, op: Operation) -> Self {
-        let mut result_mat = Self::new(self.nrows, self.ncols);
+        let mut result_mat = Self::init(self.nrows, self.ncols);
 
         for (&idx, &old_value) in self.data.iter() {
             let new_value = match op {
@@ -80,7 +80,7 @@ where
                 Operation::DIV => old_value / value,
             };
 
-            result_mat.set(idx, new_value);
+            result_mat.set(new_value, idx);
         }
 
         result_mat
@@ -129,7 +129,7 @@ where
             })
             .collect();
 
-        Self::init(data, (N, N))
+        Self::new(data, (N, N))
     }
 
     // mn x np
@@ -157,6 +157,6 @@ where
             })
             .collect();
 
-        Self::init(data, (x, z))
+        Self::new(data, (x, z))
     }
 }
