@@ -1465,25 +1465,6 @@ where
         Self::new(data, self.shape()).unwrap()
     }
 
-    /// Negates every value in the matrix
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use sukker::{Matrix, LinAlgFloats};
-    ///
-    /// let matrix = Matrix::<f32>::ones((2,2));
-    ///
-    /// let negated = matrix.neg();
-    ///
-    /// assert_eq!(negated.all(|&e| e == -1.0), true);
-    /// ```
-    fn neg(&self) -> Self {
-        let data: Vec<T> = self.data.par_iter().map(|&e| e.neg()).collect();
-
-        Self::new(data, self.shape()).unwrap()
-    }
-
     /// Find the eigenvale of a matrix
     ///
     /// # Examples
@@ -1666,6 +1647,25 @@ where
             .collect_vec();
 
         Ok(Self::new(data, self.shape()).unwrap())
+    }
+
+    /// Negates every value in the matrix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sukker::{Matrix, LinAlgFloats};
+    ///
+    /// let matrix = Matrix::<f32>::ones((2,2));
+    ///
+    /// let negated = matrix.neg();
+    ///
+    /// assert_eq!(negated.all(|&e| e == -1.0), true);
+    /// ```
+    pub fn neg(&self) -> Self {
+        let data: Vec<T> = self.data.par_iter().map(|&e| e.neg()).collect();
+
+        Self::new(data, self.shape()).unwrap()
     }
 
     /// Adds a value to a matrix and returns a new matrix
