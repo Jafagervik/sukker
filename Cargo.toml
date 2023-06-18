@@ -1,6 +1,6 @@
 [package]
 name = "sukker"
-version = "2.1.1"
+version = "2.1.2"
 edition = "2021"
 authors = ["Joergen Aleksander Fagervik <jorgenafagervik@gmail.com>"]
 license = "MIT OR Apache-2.0"
