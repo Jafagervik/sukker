@@ -25,7 +25,7 @@ use rand::Rng;
 use rayon::prelude::*;
 use std::iter::Sum;
 
-use crate::{at, LinAlgFloats, LinAlgReals, MatrixElement, MatrixError, SparseMatrix};
+use crate::{at, LinAlgFloats, MatrixElement, MatrixError, SparseMatrix};
 
 /// Shape represents the dimension size
 /// of the matrix as a tuple of usize
@@ -1287,75 +1287,6 @@ where
                 .copied()
                 .product(),
         }
-    }
-}
-
-/// Linear algebra on integer dense matrices
-impl<'a, T> LinAlgReals<'a, T> for Matrix<'a, T>
-where
-    T: MatrixElement + Real,
-    <T as FromStr>::Err: Error + 'static,
-    Vec<T>: IntoParallelIterator,
-    Vec<&'a T>: IntoParallelRefIterator<'a>,
-{
-    fn log(&self, base: T) -> Self {
-        let data: Vec<T> = self.data.par_iter().map(|&e| e.log(base)).collect();
-
-        Self::new(data, self.shape()).unwrap()
-    }
-
-    fn sin(&self) -> Self {
-        let data: Vec<T> = self.data.par_iter().map(|&e| e.sin()).collect();
-
-        Self::new(data, self.shape()).unwrap()
-    }
-
-    fn cos(&self) -> Self {
-        let data: Vec<T> = self.data.par_iter().map(|&e| e.cos()).collect();
-
-        Self::new(data, self.shape()).unwrap()
-    }
-
-    fn tan(&self) -> Self {
-        let data: Vec<T> = self.data.par_iter().map(|&e| e.tan()).collect();
-
-        Self::new(data, self.shape()).unwrap()
-    }
-
-    fn sqrt(&self) -> Self {
-        let data: Vec<T> = self.data.par_iter().map(|&e| e.sqrt()).collect();
-
-        Self::new(data, self.shape()).unwrap()
-    }
-
-    fn sinh(&self) -> Self {
-        let data: Vec<T> = self.data.par_iter().map(|&e| e.sinh()).collect();
-
-        Self::new(data, self.shape()).unwrap()
-    }
-
-    fn cosh(&self) -> Self {
-        let data: Vec<T> = self.data.par_iter().map(|&e| e.cosh()).collect();
-
-        Self::new(data, self.shape()).unwrap()
-    }
-
-    fn tanh(&self) -> Self {
-        let data: Vec<T> = self.data.par_iter().map(|&e| e.tanh()).collect();
-
-        Self::new(data, self.shape()).unwrap()
-    }
-
-    fn ln(&self) -> Self {
-        todo!()
-    }
-
-    fn get_eigenvalues(&self) -> Option<Vec<T>> {
-        todo!()
-    }
-
-    fn get_eigenvectors(&self) -> Option<Vec<T>> {
-        todo!()
     }
 }
 
