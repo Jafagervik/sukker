@@ -4,6 +4,7 @@
 use std::{
     error::Error,
     fmt::{Debug, Display},
+    ops::Mul,
     str::FromStr,
 };
 
@@ -24,6 +25,7 @@ pub trait MatrixElement:
     + PartialOrd
     + Signed
     + Sum
+    + Mul
     + Product
     + Display
     + Debug
